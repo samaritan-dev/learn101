@@ -49,8 +49,8 @@ jobs:
       - name: Start Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: ${{ matrix.api-level }}
-          target: ${{ matrix.target }}
+          api-level: 31
+          target: 31
           arch: x86_64
           profile: Nexus 6
           script: ./gradlew connectedCheck
