@@ -9,8 +9,32 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    container:
+      image: ubuntu:latest
+      options: --privileged # Important: Required for KVM
 
     steps:
+      - name: Check KVM availability
+        run: |
+          kvm-ok || { sudo apt-get update && sudo apt-get install -y qemu-kvm libvirt-daemon-system; kvm-ok; }
+
+      - name: Install required packages
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            wget \
+            unzip \
+            openjdk-17-jdk \
+            libncurses5 \
+            lib32stdc++6 \
+            lib32z1 \
+            libc6-i386 \
+            qemu-kvm \
+            libvirt-daemon-system
+
+      - name: Add user to kvm group
+        run: sudo adduser $USER kvm
+
       - name: Checkout code
         uses: actions/checkout@v3
 
@@ -24,8 +48,8 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          sdk-version: '34' # Use API 35
-          ndk-version: '25.2.8563518' # Or latest
+          sdk-version: '34'
+          ndk-version: '25.2.8563518'
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v3
@@ -55,7 +79,8 @@ jobs:
           avd-name: pixel_7_avd
           skin: pixel_7
           script: echo "Start Emulator"
-          timeout-minutes: 5
+          timeout-minutes: 10 # Increase timeout if needed
+          emulator-options: -no-snapshot-save # Prevents issues with snapshots
 
       - name: Run UI Tests
         run: ./gradlew connectedCheck
