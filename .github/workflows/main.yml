@@ -24,8 +24,8 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          sdk-version: '34'
-          ndk-version: '25.2.8563518'
+          sdk-version: '34' # Use API 35
+          ndk-version: '25.2.8563518' # Or latest
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v3
@@ -47,21 +47,18 @@ jobs:
         run: ./gradlew assembleDebug
 
       - name: Start Android Emulator
-        uses: android-actions/start-android-emulator@v3
+        uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30 # Choose an appropriate API level
-          target: google_apis # Or default
-          arch: x86_64 # Or arm64-v8a if needed, but x86_64 is faster for CI
-          profile: pixel_6 # Optional: Specify a device profile
-          avd-name: test # Optional: Name for the AVD
+          api-level: 35 # Use API 35
+          target: google_apis
+          arch: x86_64
+          profile: pixel_6 # Closest available profile, Pixel 8 Pro not yet in emulator images
+          avd-name: test
           script: echo "Start Emulator"
+          timeout-minutes: 10
 
       - name: Run UI Tests
-        uses: gradle-actions/android-emulator-runner@v2
-        with:
-          gradle-task: connectedCheck # Runs connected tests (UI tests)
-          emulator-options: -no-snapshot-save # Prevents saving emulator state, faster
-          emulator-build-command: ./gradlew assembleDebug
+        run: ./gradlew connectedCheck
 
       - name: Upload APK (Optional)
         uses: actions/upload-artifact@v3
@@ -71,7 +68,7 @@ jobs:
 
       - name: Upload Test Results (Optional)
         uses: actions/upload-artifact@v3
-        if: always() # upload even if tests fail
+        if: always()
         with:
           name: test-results
           path: app/build/reports/androidTests/connected/
