@@ -24,8 +24,8 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          sdk-version: '34'
-          ndk-version: '25.2.8563518'
+          sdk-version: '34' # Use API 35
+          ndk-version: '25.2.8563518' # Or latest
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v3
@@ -46,23 +46,16 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      - name: Create AVD and Launch Emulator
-        run: |
-          echo "Creating and starting AVD..."
-          echo "no" | avdmanager create avd -n test_avd -k "system-images;android-34;google_apis;x86_64" --force
-          $ANDROID_HOME/emulator/emulator -avd test_avd -no-window -no-audio -no-boot-anim -no-snapshot-load &
-          echo "Waiting for emulator to be ready..."
-          sleep 60
-          adb wait-for-device
-          adb shell getprop sys.boot_completed | grep -m 1 '1'
-          adb devices
-          echo "Emulator is ready!"
-
-      - name: Restart ADB (Fix Offline Device)
-        run: |
-          adb kill-server
-          adb start-server
-          adb devices
+      - name: Start Android Emulator
+        uses: reactivecircus/android-emulator-runner@v2
+        with:
+          api-level: 35
+          target: google_apis
+          arch: x86_64
+          avd-name: pixel_8_pro_avd # Descriptive AVD name
+          skin: pixel_7 # Use a close approximation for now
+          script: echo "Start Emulator"
+          timeout-minutes: 5
 
       - name: Run UI Tests
         run: ./gradlew connectedCheck
