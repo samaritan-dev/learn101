@@ -46,14 +46,24 @@ jobs:
       - name: Build Debug APK
         run: ./gradlew assembleDebug
 
-      - name: Run Android Emulator
+      - name: Start Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30
-          target: google_apis
+          api-level: 30 # Use a more common API level
+          target: google_apis # Correct target value
           arch: x86_64
-          profile: pixel_7
+          profile: Nexus 5X # Use a smaller profile for faster startup
           script: ./gradlew connectedCheck
+          cores: 4 # Allocate more cores to the emulator
+          avd-name: test
+          force-avd-creation: true
+          emulator-boot-timeout: 300 # Reduced timeout, adjust if needed
+          disable-animations: true
+          disable-spellchecker: true
+          disable-linux-hw-accel: true # Force disable hardware acceleration
+          enable-hw-keyboard: false
+          channel: stable
+          emulator-options: -no-window -gpu swiftshader_indirect -no-snapshot -noaudio -no-boot-anim -partition-size 512
 
       - name: Run UI Tests
         run: ./gradlew connectedCheck
