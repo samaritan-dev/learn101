@@ -49,13 +49,14 @@ jobs:
       - name: Start Android Emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 35 # Use API 35
+          api-level: 35
           target: google_apis
           arch: x86_64
-          profile: pixel_6 # Closest available profile, Pixel 8 Pro not yet in emulator images
-          avd-name: test
+          avd-name: pixel_8_pro_avd # Descriptive AVD name
+          skin: pixel_7 # Use a close approximation for now
           script: echo "Start Emulator"
           timeout-minutes: 10
+          force-avd-creation: true #Forces recreation of AVD, useful if configuration changed
 
       - name: Run UI Tests
         run: ./gradlew connectedCheck
