@@ -1,4 +1,4 @@
-name: Android Instrumentation Tests
+name: Android Tests
 
 on:
   push:
@@ -22,24 +22,46 @@ jobs:
           distribution: 'temurin'
           java-version: '17'
 
+      - name: Cache Gradle dependencies
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.gradle/caches
+            ~/.gradle/wrapper
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', 'gradle/wrapper/gradle-wrapper.properties') }}
+          restore-keys: |
+            ${{ runner.os }}-gradle-
+
+      - name: Cache Android SDK components
+        id: android-cache
+        uses: actions/cache@v3
+        with:
+          path: |
+            ~/.android/cache
+            ~/Android/Sdk
+          key: ${{ runner.os }}-android-${{ hashFiles('sdk-cache.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-android-
+
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
 
       - name: Grant execute permission for Gradle
         run: chmod +x gradlew
 
-      - name: Run Android Emulator and Tests
+      - name: Run Android Instrumented Tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 33
           target: google_apis
           arch: x86_64
           profile: Pixel 8 Pro API 33
+          timeout-minutes: 10
           script: ./gradlew connectedCheck
 
       - name: Upload Test Results
-        if: always()
         uses: actions/upload-artifact@v4
+        if: always()
         with:
-          name: test-results
+          name: test-results-${{ job.status }}
           path: app/build/reports/androidTests/connected/
