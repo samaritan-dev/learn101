@@ -28,23 +28,10 @@ jobs:
       - name: Grant execute permission for Gradle
         run: chmod +x gradlew
 
-      - name: List Available Emulators
+      - name: Create and Start Emulator
         run: |
-          echo "Available Android Virtual Devices:"
-          $ANDROID_HOME/emulator/emulator -list-avds
-
-      - name: Start Existing Emulator
-        run: |
-          EMULATOR_NAME=$($ANDROID_HOME/emulator/emulator -list-avds | head -n 1)
-          if [ -z "$EMULATOR_NAME" ]; then
-            echo "No emulator found. Exiting."
-            exit 1
-          fi
-          echo "Starting emulator: $EMULATOR_NAME"
-          nohup $ANDROID_HOME/emulator/emulator -avd $EMULATOR_NAME -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
-
-      - name: Wait for Emulator to Boot
-        run: |
+          echo "no" | sdkmanager --command avdmanager create avd --name test_emulator --package "system-images;android-30;google_apis_playstore;x86" --abi "x86"
+          nohup $ANDROID_HOME/emulator/emulator -avd test_emulator -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
           adb wait-for-device
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
