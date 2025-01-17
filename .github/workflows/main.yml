@@ -34,7 +34,8 @@ jobs:
         with:
           api-level: 30 # Choose your API level
           target: google_apis # Or google_apis_playstore if you need Play Services
-          arch: x86_64 # Or arm64-v8a if needed, but x86_64 is generally faster for CI
+          arch: arm64-v8a # Or arm64-v8a if needed, but x86_64 is generally faster for CI
+          system-images: android-30;google_apis_playstore;arm64-v8a
           script: ./gradlew connectedCheck # Your connected tests command
           emulator-options: -no-snapshot-load -no-snapshot-save -no-window # Recommended options for CI
           disable-animations: true
