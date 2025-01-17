@@ -16,13 +16,8 @@ ENV ANDROID_HOME /opt/cmdline-tools
 ENV PATH "$PATH:${ANDROID_HOME}/bin:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools"
 
 # Set up Android SDK
-RUN sdkmanager --sdk_root="${ANDROID_HOME}" \
-    --install "platforms;android-33" \
-    "build-tools;33.0.2" \
-    "emulator" \
-    "system-images;android-33;google_apis;x86" \
-    "extras;android;m2repository" \
-    --licenses --update
+RUN sdkmanager --sdk_root="${ANDROID_HOME}" --licenses
+RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install "platforms;android-33" "build-tools;33.0.2" "emulator" "system-images;android-33;google_apis;x86" "extras;android;m2repository"
 
 # Install ADB
 RUN sdkmanager "platform-tools"
