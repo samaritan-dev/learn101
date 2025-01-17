@@ -1,67 +1,62 @@
-name: Android Instrumentation Tests
+name: Android CI
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
   pull_request:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
-  android-test:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: macos-latest # Or ubuntu-latest if you prefer
 
     steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK
+      - uses: actions/checkout@v3
+      - name: set up JDK 17
         uses: actions/setup-java@v3
         with:
-          distribution: 'temurin'
           java-version: '17'
-
-      - name: Cache Gradle dependencies
+          distribution: 'temurin'
+      - name: Cache Gradle packages
         uses: actions/cache@v3
         with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', 'gradle/wrapper/gradle-wrapper.properties') }}
+          path: ~/.gradle/caches
+          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
+      - name: Make Gradle executable
+        run: chmod +x ./gradlew
+      - name: Build with Gradle
+        run: ./gradlew assembleDebug
 
-      - name: Cache Android SDK components
-        id: android-cache
-        uses: actions/cache@v3
-        with:
-          path: |
-            ~/.android/cache
-            ~/Android/Sdk
-          key: ${{ runner.os }}-android-${{ hashFiles('sdk-cache.txt') }}
-          restore-keys: |
-            ${{ runner.os }}-android-
-
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Grant execute permission for Gradle
-        run: chmod +x gradlew
-
-      - name: Run Android Instrumented Tests
+      - name: Run tests on emulators
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 33
-          target: google_apis
-          arch: x86_64
-          profile: Pixel 8 Pro API 33
-          timeout-minutes: 10
-          script: ./gradlew connectedCheck
+          api-level: 30 # Choose your API level
+          target: google_apis # Or google_apis_playstore if you need Play Services
+          arch: x86_64 # Or arm64-v8a if needed, but x86_64 is generally faster for CI
+          script: ./gradlew connectedCheck # Your connected tests command
+          emulator-options: -no-snapshot-load -no-snapshot-save -no-window # Recommended options for CI
+          disable-animations: true
+          avd-name: test_emulator #Custom name to avoid conflicts
+          working-directory: ./app #If your tests are in a subfolder
+          # Optional: Specify the number of emulators to run in parallel.
+          #num-emulators: 2 # If you have multiple connected checks that can be run in parallel
+          # Optional: Specify the timeout for the emulator startup.
+          #emulator-timeout: 300 # Default is 180 seconds. Increase if your emulator takes longer to start
+          # Optional: Specify the timeout for the tests to run.
+          #test-timeout: 600 # Default is 300 seconds. Increase if your tests take longer to run
 
       - name: Upload Test Results
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v3
         if: always()
         with:
-          name: test-results-${{ job.status }}
+          name: test-results
           path: app/build/reports/androidTests/connected/
+
+      - name: Upload APK
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: app-debug.apk
+          path: app/build/outputs/apk/debug/app-debug.apk
