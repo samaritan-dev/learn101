@@ -30,7 +30,7 @@ jobs:
 
       - name: Run tests on emulators
         id: emulator
-        uses: reactivecircus/android-emulator-runner@v3 # Use v3 to fix warnings
+        uses: reactivecircus/android-emulator-runner@v2.33.0 # Use v3 to fix warnings
         with:
           api-level: 30
           target: google_apis # Or google_apis_playstore
