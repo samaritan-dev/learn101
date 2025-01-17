@@ -8,11 +8,11 @@ on:
 
 jobs:
   build:
-    runs-on: macos-latest # Or ubuntu-latest if you prefer
-
+    runs-on: ubuntu-latest # Strongly recommended for best performance
+    # runs-on: macos-latest # Only use if absolutely necessary, with arm64-v8a and SwiftShader
     steps:
       - uses: actions/checkout@v3
-      - name: set up JDK 17
+      - name: Set up JDK 17
         uses: actions/setup-java@v3
         with:
           java-version: '17'
@@ -30,23 +30,25 @@ jobs:
         run: ./gradlew assembleDebug
 
       - name: Run tests on emulators
+        id: emulator # Give an ID to the step
         uses: reactivecircus/android-emulator-runner@v2
         with:
-          api-level: 30 # Choose your API level
+          api-level: 30
           target: google_apis # Or google_apis_playstore if you need Play Services
-          arch: arm64-v8a # Or arm64-v8a if needed, but x86_64 is generally faster for CI
-          system-images: android-30;google_apis_playstore;arm64-v8a
-          script: ./gradlew connectedCheck # Your connected tests command
-          emulator-options: -no-snapshot-load -no-snapshot-save -no-window # Recommended options for CI
+          arch: x86_64 # Use arm64-v8a if using macos-latest
+          script: ./gradlew connectedCheck
+          emulator-options: -no-snapshot-load -no-snapshot-save -no-window # -gpu swiftshader add for macos
           disable-animations: true
-          avd-name: test_emulator #Custom name to avoid conflicts
-          working-directory: ./app #If your tests are in a subfolder
-          # Optional: Specify the number of emulators to run in parallel.
-          #num-emulators: 2 # If you have multiple connected checks that can be run in parallel
-          # Optional: Specify the timeout for the emulator startup.
-          #emulator-timeout: 300 # Default is 180 seconds. Increase if your emulator takes longer to start
-          # Optional: Specify the timeout for the tests to run.
-          #test-timeout: 600 # Default is 300 seconds. Increase if your tests take longer to run
+          avd-name: test_emulator
+          working-directory: ./app # Adjust if your tests are in a subfolder
+          emulator-timeout: 600 # Increase if emulator startup takes longer
+          test-timeout: 900 # Increase if your tests take longer
+
+      - name: Reduce Emulator Cores
+        if: steps.emulator.outcome == 'success' # Only if emulator started
+        run: |
+          echo "hw.cpu.ncore=1" >> ~/.android/avd/test_emulator.avd/config.ini
+          cat ~/.android/avd/test_emulator.avd/config.ini # Verify the change
 
       - name: Upload Test Results
         uses: actions/upload-artifact@v3
