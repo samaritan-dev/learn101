@@ -39,5 +39,5 @@ WORKDIR /app
 # Grant execute permission for gradlew
 RUN chmod +x gradlew
 
-# Build the project
-CMD ["./gradlew", "assembleDebug"]
+# Build the project (optional: for a base image)
+# CMD ["./gradlew", "assembleDebug"]

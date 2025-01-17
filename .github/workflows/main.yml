@@ -21,7 +21,7 @@ jobs:
             run: |
               docker build -t my-android-project:latest . 
 
-          - name: Push Docker Image to Container Registry (if needed)
+          - name: Push Docker Image to Container Registry (optional)
             run: |
               docker push my-android-project:latest 
 
@@ -37,8 +37,8 @@ jobs:
                   -p 5554:5554 \ 
                   -p 5555:5555 \ 
                   -p 5556:5556 \ 
-                  # ... (forward other necessary ports as mentioned earlier) \
+                  # ... (forward other necessary ports) \
                   my-android-project:latest 
 
-          - name: Run Tests (replace with your actual test command)
+          - name: Run Tests
             run: ./gradlew connectedAndroidTest
