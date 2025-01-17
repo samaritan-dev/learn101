@@ -38,7 +38,7 @@ jobs:
           script: ./gradlew connectedCheck
           emulator-options: -no-snapshot-load -no-snapshot-save -no-window -gpu swiftshader # Force SwiftShader - CRUCIAL for macOS
           disable-animations: true
-          avd-name: test_emulator
+          avd-name: emulator-5554
           working-directory: ./app # Adjust if your tests are in a subfolder
           emulator-timeout: 600 # Adjust if necessary
           test-timeout: 900 # Adjust if necessary
