@@ -1,4 +1,4 @@
-name: Android CI
+name: Android CI (macOS)
 
 on:
   push:
@@ -8,8 +8,7 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest # Strongly recommended for best performance
-    # runs-on: macos-latest # Only use if absolutely necessary, with arm64-v8a and SwiftShader
+    runs-on: macos-latest # Force macOS runner
     steps:
       - uses: actions/checkout@v3
       - name: Set up JDK 17
@@ -30,22 +29,23 @@ jobs:
         run: ./gradlew assembleDebug
 
       - name: Run tests on emulators
-        id: emulator # Give an ID to the step
+        id: emulator
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 30
           target: google_apis # Or google_apis_playstore if you need Play Services
-          arch: x86_64 # Use arm64-v8a if using macos-latest
+          arch: arm64-v8a # MUST be arm64-v8a on macOS
           script: ./gradlew connectedCheck
-          emulator-options: -no-snapshot-load -no-snapshot-save -no-window # -gpu swiftshader add for macos
+          emulator-options: -no-snapshot-load -no-snapshot-save -no-window -gpu swiftshader # Force SwiftShader - CRUCIAL for macOS
           disable-animations: true
           avd-name: test_emulator
           working-directory: ./app # Adjust if your tests are in a subfolder
-          emulator-timeout: 600 # Increase if emulator startup takes longer
-          test-timeout: 900 # Increase if your tests take longer
+          emulator-timeout: 600 # Adjust if necessary
+          test-timeout: 900 # Adjust if necessary
+          system-images: android-30;google_apis;arm64-v8a # Explicitly define system images
 
-      - name: Reduce Emulator Cores
-        if: steps.emulator.outcome == 'success' # Only if emulator started
+      - name: Reduce Emulator Cores (macOS)
+        if: steps.emulator.outcome == 'success'
         run: |
           echo "hw.cpu.ncore=1" >> ~/.android/avd/test_emulator.avd/config.ini
           cat ~/.android/avd/test_emulator.avd/config.ini # Verify the change
