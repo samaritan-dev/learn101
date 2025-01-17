@@ -16,7 +16,7 @@ ENV ANDROID_HOME /opt/cmdline-tools
 ENV PATH "$PATH:${ANDROID_HOME}/bin:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools"
 
 # Set up Android SDK
-RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install "platforms;android-33" "build-tools;33.0.2" --licenses --update
+RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install "platforms;android-35" "build-tools;33.0.2" "emulator" --licenses --update
 
 # Copy project files
 COPY . /app

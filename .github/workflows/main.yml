@@ -33,11 +33,15 @@ jobs:
         uses: reactivecircus/android-emulator-runner@v2.33.0 # Use v3 to fix warnings
         with:
           target: google_apis # Or google_apis_playstore
+          arch: arm64-v8a # MUST be arm64-v8a on macOS
           script: ./gradlew connectedCheck
           emulator-options: -no-snapshot-load -no-snapshot-save -no-window -gpu swiftshader # Force SwiftShader - CRUCIAL for macOS
           disable-animations: true
-          avd-name: emulator-5554
+          avd-name: emulator
+          working-directory: ./app # Adjust if your tests are in a subfolder
           emulator-timeout: 600 # Adjust if necessary
+          test-timeout: 900 # Adjust if necessary
+          system-images: android-35;google_apis;arm64-v8a # Explicitly define system images
 
       # No need for the "Reduce Emulator Cores" step unless you specifically need to override the default
 
