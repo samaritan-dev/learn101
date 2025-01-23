@@ -33,7 +33,7 @@ jobs:
         run: |
           echo "Starting emulator"
           export DISPLAY=:1
-          nohup emulator -avd test_avd -no-window -no-audio -no-boot-anim -accel auto &
+          nohup emulator -avd test_avd -no-window -no-audio -no-boot-anim -accel auto -no-snapshot & # -no-snapshot is important
           adb wait-for-device
           adb shell input keyevent 82
           adb shell settings put global window_animation_scale 0.0
@@ -42,7 +42,7 @@ jobs:
           adb shell settings put secure sysui_demo_allowed 1
           adb shell am broadcast -a com.android.systemui.demo -e command enter
           echo "Waiting for emulator to boot..."
-          while [[ $(adb shell getprop sys.boot_completed) != 1 ]]; do # Robust boot check
+          while [[ $(adb shell getprop sys.boot_completed) != 1 ]]; do
             sleep 5
             echo "Waiting..."
           done
