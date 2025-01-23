@@ -30,12 +30,12 @@ RUN mkdir -p ~/.android/avd && touch ~/.android/repositories.cfg
 # Accept all SDK licenses
 RUN yes | sdkmanager --sdk_root="${ANDROID_HOME}" --licenses > /dev/null
 
-# Install required Android components
+# Install required Android components (ARM system image)
 RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install \
     "platforms;android-33" \
     "build-tools;33.0.2" \
     "emulator" \
-    "system-images;android-33;google_apis;x86_64" \
+    "system-images;android-33;google_apis;arm64-v8a" \
     "extras;android;m2repository" \
     "platform-tools"
 
@@ -52,8 +52,8 @@ WORKDIR /app
 # Expose necessary ports for ADB & emulator UI
 EXPOSE 5554 5555 5900
 
-# Set up an AVD (Android Virtual Device) without hardware acceleration
-RUN echo "no" | avdmanager create avd -n test_avd -k "system-images;android-33;google_apis;x86_64" --device "pixel"
+# Create an AVD using the ARM system image
+RUN echo "no" | avdmanager create avd -n test_avd -k "system-images;android-33;google_apis;arm64-v8a" --device "pixel"
 
-# Start the emulator in software rendering mode (without KVM)
-CMD ["emulator", "-avd", "test_avd", "-no-snapshot", "-no-audio", "-no-window", "-gpu", "swiftshader_indirect", "-accel", "off"]
+# Start the emulator in software rendering mode (ARM-based)
+CMD ["emulator", "-avd", "test_avd", "-no-snapshot", "-no-audio", "-no-window", "-gpu", "swiftshader_indirect"]

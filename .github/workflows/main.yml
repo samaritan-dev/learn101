@@ -48,37 +48,37 @@ jobs:
           restore-keys: |
             android-sdk-${{ runner.os }}-
 
-      - name: Install Required Android System Image
+      - name: Install Required Android System Image (ARM64)
         run: |
-          export ANDROID_HOME=/root/.android
+          export ANDROID_HOME=/opt/android-sdk
           export ANDROID_SDK_ROOT=$ANDROID_HOME
-          yes | sdkmanager --install "system-images;android-33;google_apis;x86_64"
+          yes | sdkmanager --install "system-images;android-33;google_apis;arm64-v8a"
 
-      - name: Create AVD
+      - name: Create AVD (ARM64)
         run: |
-          export ANDROID_HOME=/root/.android
+          export ANDROID_HOME=/opt/android-sdk
           export ANDROID_SDK_ROOT=$ANDROID_HOME
-          mkdir -p $ANDROID_HOME/avd
+          mkdir -p /root/.android/avd
 
           echo "Deleting existing AVD (if any)..."
           avdmanager delete avd -n test_avd || true
 
-          echo "Creating new AVD..."
-          echo "no" | avdmanager create avd -n test_avd --package "system-images;android-33;google_apis;x86_64" --abi x86_64 --device "pixel" --force
+          echo "Creating new ARM-based AVD..."
+          echo "no" | avdmanager create avd -n test_avd --package "system-images;android-33;google_apis;arm64-v8a" --abi arm64-v8a --device "pixel" --force
 
           echo "Verifying AVD creation..."
-          ls -la $ANDROID_HOME/avd
+          ls -la /root/.android/avd
 
-          if [ ! -f "$ANDROID_HOME/avd/test_avd.ini" ]; then
+          if [ ! -f "/root/.android/avd/test_avd.ini" ]; then
             echo "AVD configuration file is missing!"
             exit 1
           fi
 
-      - name: Start Emulator
+      - name: Start Emulator (Software Rendering, No KVM)
         timeout-minutes: 10
         run: |
           export DISPLAY=:1
-          nohup emulator -avd test_avd -no-window -no-audio -no-boot-anim -accel on -no-snapshot-load -gpu swiftshader_indirect &
+          nohup emulator -avd test_avd -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -accel off -no-snapshot-load &
           sleep 60  # Allow emulator to start
 
           echo "Waiting for emulator to be ready..."
