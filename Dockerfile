@@ -17,13 +17,16 @@ ENV ANDROID_SDK_ROOT $ANDROID_HOME
 ENV PATH "$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 
 # Download and extract Android command-line tools
-RUN mkdir -p $ANDROID_HOME/cmdline-tools/latest && \
+RUN mkdir -p $ANDROID_HOME/cmdline-tools && \
     wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O sdk.zip && \
-    unzip sdk.zip -d $ANDROID_HOME/cmdline-tools/latest && \
+    unzip sdk.zip -d $ANDROID_HOME/cmdline-tools/ && \
     rm sdk.zip
 
 # Ensure sdkmanager is available
-RUN chmod +x $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager
+RUN ls -la $ANDROID_HOME/cmdline-tools/latest/bin && \
+    chmod +x $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager
+
+# Create symlink for sdkmanager
 RUN ln -s $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager /usr/local/bin/sdkmanager
 
 # Verify sdkmanager is working
