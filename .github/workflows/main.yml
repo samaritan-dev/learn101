@@ -13,7 +13,8 @@ jobs:
       contents: read
       packages: write
     steps:
-      - uses: actions/checkout@v3 # No changes here
+      - uses: actions/checkout@v3
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
@@ -29,35 +30,42 @@ jobs:
       options: --user root
     steps:
       - uses: actions/checkout@v3
+
       - name: Increase Disk Space
-        uses: actions/checkout@v3
-        with:
-          path: large_workspace # Creates a larger workspace
+        run: |
+          echo "Expanding disk space"
+          df -h
+
+      - name: Create AVD
+        run: |
+          echo "no" | avdmanager create avd --name test_avd --package "system-images;android-33;google_apis;x86_64" --abi x86_64 --device "pixel" --force
+
+      - name: Debug AVD
+        run: |
+          avdmanager list avd
+          emulator -list-avds
+
       - name: Start Emulator
         timeout-minutes: 10
         run: |
-          echo "Starting emulator"
+          echo "Starting emulator..."
           export DISPLAY=:1
-          nohup emulator -avd test_avd -no-window -no-audio -no-boot-anim -accel auto -no-snapshot &
+          nohup emulator -avd test_avd -no-window -no-audio -no-boot-anim -accel on -no-snapshot-load -gpu swiftshader_indirect &
+          sleep 60  # Allow emulator to start
           adb wait-for-device
           adb shell input keyevent 82
-          adb shell settings put global window_animation_scale 0.0
-          adb shell settings put global transition_animation_scale 0.0
-          adb shell settings put global animator_duration_scale 0.0
-          adb shell settings put secure sysui_demo_allowed 1
-          adb shell am broadcast -a com.android.systemui.demo -e command enter
           echo "Waiting for emulator to boot..."
           while [[ $(adb shell getprop sys.boot_completed) != 1 ]]; do
             sleep 5
             echo "Waiting..."
           done
           echo "Emulator booted!"
+
       - name: Grant execute permission for gradlew
-        working-directory: ./large_workspace # Change working directory
         run: chmod +x gradlew
+
       - name: Run Unit Tests
-        working-directory: ./large_workspace # Change working directory
         run: ./gradlew test
+
       - name: Run UI Tests
-        working-directory: ./large_workspace # Change working directory
         run: ./gradlew connectedCheck

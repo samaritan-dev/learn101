@@ -1,5 +1,7 @@
+# Use OpenJDK 17 as the base image
 FROM openjdk:17-jdk-slim
 
+# Install required dependencies
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
         wget \
@@ -8,18 +10,34 @@ RUN apt-get update && \
         libx11-6 libx11-dev libgl1-mesa-glx libgl1-mesa-dev \
         && rm -rf /var/lib/apt/lists/*
 
-RUN wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O sdk.zip
-RUN unzip sdk.zip -d /opt/
-RUN rm sdk.zip
-ENV ANDROID_HOME /opt/cmdline-tools
-ENV PATH "$PATH:${ANDROID_HOME}/bin:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools"
+# Set up Android SDK paths
+ENV ANDROID_HOME /opt/android-sdk
+ENV PATH "$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH"
 
+# Download and extract Android command-line tools
+RUN mkdir -p $ANDROID_HOME/cmdline-tools/latest && \
+    wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O sdk.zip && \
+    unzip sdk.zip -d $ANDROID_HOME/cmdline-tools/latest && \
+    rm sdk.zip
+
+# Move extracted tools to the correct directory
+RUN mv $ANDROID_HOME/cmdline-tools/latest/cmdline-tools/* $ANDROID_HOME/cmdline-tools/latest/ && \
+    rm -rf $ANDROID_HOME/cmdline-tools/latest/cmdline-tools
+
+# Accept all SDK licenses
 RUN yes | sdkmanager --sdk_root="${ANDROID_HOME}" --licenses > /dev/null
 
-RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install "platforms;android-33" "build-tools;33.0.2" "emulator" "system-images;android-33;google_apis;x86_64" "extras;android;m2repository" "platform-tools"
+# Install required Android components
+RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install "platforms;android-33" \
+    "build-tools;33.0.2" "emulator" "system-images;android-33;google_apis;x86_64" \
+    "extras;android;m2repository" "platform-tools"
 
-RUN mkdir -p /root/.android/avd/test_avd.avd && \
-    echo "skin.path=_no_skin" > /root/.android/avd/test_avd.avd/config.ini && \
-    avdmanager create avd --name test_avd --package "system-images;android-33;google_apis;x86_64" --abi x86_64 --force > /dev/null 2>&1
+# Ensure necessary directories exist
+RUN mkdir -p ~/.android/avd && \
+    touch ~/.android/repositories.cfg
 
+# Debug step: List installed SDK components
+RUN sdkmanager --list
+
+# Set working directory
 WORKDIR /app
