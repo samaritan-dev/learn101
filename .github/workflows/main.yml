@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
+      packages: write  # Required for pushing to GitHub Container Registry
     steps:
       - uses: actions/checkout@v3
 
@@ -25,7 +25,7 @@ jobs:
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
-          context: docker/android-ci
+          context: .
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/android-ci:latest
           cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/android-ci:latest
@@ -48,7 +48,13 @@ jobs:
           restore-keys: |
             android-sdk-${{ runner.os }}-
 
-      - name: Create AVD (ARM-Based)
+      - name: Install Required Android System Image
+        run: |
+          export ANDROID_HOME=/root/.android
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          yes | sdkmanager --install "system-images;android-33;google_apis;x86_64"
+
+      - name: Create AVD
         run: |
           export ANDROID_HOME=/root/.android
           export ANDROID_SDK_ROOT=$ANDROID_HOME
@@ -57,10 +63,8 @@ jobs:
           echo "Deleting existing AVD (if any)..."
           avdmanager delete avd -n test_avd || true
 
-          echo "Creating new AVD (ARM-based)..."
-          echo "no" | avdmanager create avd -n test_avd \
-            --package "system-images;android-33;google_apis;armeabi-v7a" \
-            --abi armeabi-v7a --device "pixel" --force
+          echo "Creating new AVD..."
+          echo "no" | avdmanager create avd -n test_avd --package "system-images;android-33;google_apis;x86_64" --abi x86_64 --device "pixel" --force
 
           echo "Verifying AVD creation..."
           ls -la $ANDROID_HOME/avd
@@ -70,12 +74,12 @@ jobs:
             exit 1
           fi
 
-      - name: Start Emulator (ARM-Based)
-        timeout-minutes: 15
+      - name: Start Emulator
+        timeout-minutes: 10
         run: |
           export DISPLAY=:1
-          nohup emulator -avd test_avd -no-window -no-audio -no-boot-anim -accel off -no-snapshot-load -gpu swiftshader_indirect &
-          sleep 90  # Give emulator more time to start
+          nohup emulator -avd test_avd -no-window -no-audio -no-boot-anim -accel on -no-snapshot-load -gpu swiftshader_indirect &
+          sleep 60  # Allow emulator to start
 
           echo "Waiting for emulator to be ready..."
           adb wait-for-device
@@ -83,7 +87,7 @@ jobs:
 
           while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
             echo "Waiting for emulator to boot..."
-            sleep 10
+            sleep 5
           done
           echo "Emulator is ready!"
 

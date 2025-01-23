@@ -29,12 +29,12 @@ RUN mkdir -p ~/.android/avd && touch ~/.android/repositories.cfg
 # Accept all SDK licenses
 RUN yes | sdkmanager --sdk_root="${ANDROID_HOME}" --licenses > /dev/null
 
-# Install required Android components (ARM-based system image)
+# Install required Android components
 RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install \
     "platforms;android-33" \
     "build-tools;33.0.2" \
     "emulator" \
-    "system-images;android-33;google_apis;armeabi-v7a" \
+    "system-images;android-33;google_apis;x86_64" \
     "extras;android;m2repository" \
     "platform-tools"
 
