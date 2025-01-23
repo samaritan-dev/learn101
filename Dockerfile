@@ -1,4 +1,3 @@
-Use OpenJDK 17 as the base image
 FROM openjdk:17-jdk-slim
 
 # Install required dependencies
