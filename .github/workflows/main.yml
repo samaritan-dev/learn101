@@ -35,14 +35,18 @@ jobs:
           export DISPLAY=:1
           nohup emulator -avd test_avd -no-window -no-audio -no-boot-anim -accel auto &
           adb wait-for-device
-          adb shell input keyevent 82 # Unlock screen
+          adb shell input keyevent 82
           adb shell settings put global window_animation_scale 0.0
           adb shell settings put global transition_animation_scale 0.0
           adb shell settings put global animator_duration_scale 0.0
           adb shell settings put secure sysui_demo_allowed 1
           adb shell am broadcast -a com.android.systemui.demo -e command enter
-          sleep 60 # IMPORTANT: Adjust if needed. Consider using a more robust check.
-          adb shell getprop sys.boot_completed
+          echo "Waiting for emulator to boot..."
+          while [[ $(adb shell getprop sys.boot_completed) != 1 ]]; do # Robust boot check
+            sleep 5
+            echo "Waiting..."
+          done
+          echo "Emulator booted!"
       - name: Grant execute permission for gradlew
         run: chmod +x gradlew
       - name: Run Unit Tests
