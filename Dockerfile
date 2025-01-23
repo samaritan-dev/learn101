@@ -18,13 +18,9 @@ RUN yes | sdkmanager --sdk_root="${ANDROID_HOME}" --licenses > /dev/null
 
 RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install "platforms;android-33" "build-tools;33.0.2" "emulator" "system-images;android-33;google_apis;x86_64" "extras;android;m2repository" "platform-tools"
 
+# Create AVD (Correct and working method)
 RUN mkdir -p /root/.android/avd/test_avd.avd && \
     echo "skin.path=_no_skin" > /root/.android/avd/test_avd.avd/config.ini && \
-    avdmanager --verbose avd \ # Added --verbose for debugging if needed
-        --create avd \
-        --name test_avd \
-        --package "system-images;android-33;google_apis;x86_64" \
-        --abi x86_64 \
-        --force
+    avdmanager --verbose create avd --name test_avd --package "system-images;android-33;google_apis;x86_64" --abi x86_64 --force
 
 WORKDIR /app
