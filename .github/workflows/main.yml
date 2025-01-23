@@ -48,31 +48,26 @@ jobs:
           restore-keys: |
             android-sdk-${{ runner.os }}-
 
-      - name: Set up environment variables for Android SDK
+      - name: Fetch Latest Android Platform
+        id: get-latest-android
         run: |
-          export ANDROID_HOME=$HOME/.android
-          export ANDROID_SDK_ROOT=$ANDROID_HOME
-          echo "ANDROID_HOME and ANDROID_SDK_ROOT are set"
-
-      - name: Get Latest Android Platform Version
-        run: |
+          echo "Fetching the latest Android platform..."
+          # Get the latest platform version dynamically (this step will output the platform version)
           LATEST_PLATFORM=$(sdkmanager --list | grep "platforms;android-" | sort -V | tail -n 1 | awk '{print $1}')
-          echo "Latest Android Platform: $LATEST_PLATFORM"
-          export LATEST_PLATFORM
-        shell: bash
+          echo "LATEST_PLATFORM=$LATEST_PLATFORM" >> $GITHUB_ENV
 
-      - name: Create AVD with Latest Platform
+      - name: Create AVD
         run: |
           echo "Creating AVD with $LATEST_PLATFORM..."
           export ANDROID_HOME=$HOME/.android
           export ANDROID_SDK_ROOT=$ANDROID_HOME
           mkdir -p $ANDROID_HOME/avd
           echo "Creating AVD..."
-
+          
           # Attempt to delete any existing AVD to prevent conflicts
           avdmanager delete avd -n test_avd || true
 
-          # Create the AVD with the latest platform
+          # Create the AVD with the dynamically fetched latest platform
           avdmanager create avd --name test_avd --package "$LATEST_PLATFORM;google_apis;x86_64" --abi x86_64 --device "pixel" --force
 
           # Wait for a short period to ensure file creation
@@ -84,17 +79,12 @@ jobs:
           # Check if the AVD config exists using the correct path
           ls -la $ANDROID_HOME/avd
           if [ -f "$ANDROID_HOME/avd/test_avd.ini" ]; then
-            cat $ANDROID_HOME/avd/test_avd.ini
+              cat $ANDROID_HOME/avd/test_avd.ini
           else
-            echo "AVD config missing (after delay)"
-            exit 1 # Fail the step if the file is still missing
+              echo "AVD config missing (after delay)"
+              exit 1 # Fail the step if the file is still missing
           fi
-        shell: bash
-
-      - name: Debug AVD
-        run: |
-          ls -la ~/.android/avd
-          cat ~/.android/avd/test_avd.ini || echo "AVD config missing"
+        shell: bash --noprofile --norc -e -o pipefail {0}
 
       - name: Start Emulator
         timeout-minutes: 10
