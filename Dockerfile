@@ -28,9 +28,12 @@ RUN mv $ANDROID_HOME/cmdline-tools/latest/cmdline-tools/* $ANDROID_HOME/cmdline-
 RUN yes | sdkmanager --sdk_root="${ANDROID_HOME}" --licenses > /dev/null
 
 # Install required Android components
-RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install "platforms;android-33" \
-    "build-tools;33.0.2" "emulator" "system-images;android-33;google_apis;x86_64" \
-    "extras;android;m2repository" "platform-tools"
+RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install "emulator" "platform-tools" "system-images;android-33;google_apis;x86_64" \
+    "extras;android;m2repository"
+
+# Fetch the latest Android platform version dynamically and install it
+RUN LATEST_PLATFORM=$(sdkmanager --list | grep "platforms;android-" | sort -V | tail -n 1 | awk '{print $1}') && \
+    sdkmanager --sdk_root="${ANDROID_HOME}" --install "$LATEST_PLATFORM"
 
 # Ensure necessary directories exist
 RUN mkdir -p ~/.android/avd && \

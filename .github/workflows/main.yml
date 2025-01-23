@@ -48,27 +48,40 @@ jobs:
           restore-keys: |
             android-sdk-${{ runner.os }}-
 
-      - name: Create AVD
+      - name: Set up environment variables for Android SDK
         run: |
-          echo "Creating AVD..."
+          export ANDROID_HOME=$HOME/.android
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          echo "ANDROID_HOME and ANDROID_SDK_ROOT are set"
+
+      - name: Get Latest Android Platform Version
+        run: |
+          LATEST_PLATFORM=$(sdkmanager --list | grep "platforms;android-" | sort -V | tail -n 1 | awk '{print $1}')
+          echo "Latest Android Platform: $LATEST_PLATFORM"
+          export LATEST_PLATFORM
+        shell: bash
+
+      - name: Create AVD with Latest Platform
+        run: |
+          echo "Creating AVD with $LATEST_PLATFORM..."
           export ANDROID_HOME=$HOME/.android
           export ANDROID_SDK_ROOT=$ANDROID_HOME
           mkdir -p $ANDROID_HOME/avd
           echo "Creating AVD..."
-            
+
           # Attempt to delete any existing AVD to prevent conflicts
           avdmanager delete avd -n test_avd || true
-            
-          # Create the AVD
-          avdmanager create avd --name test_avd --package "system-images;android-33;google_apis;x86_64" --abi x86_64 --device "pixel" --force
-            
+
+          # Create the AVD with the latest platform
+          avdmanager create avd --name test_avd --package "$LATEST_PLATFORM;google_apis;x86_64" --abi x86_64 --device "pixel" --force
+
           # Wait for a short period to ensure file creation
           sleep 5
-            
+
           # List available AVDs to confirm creation
           avdmanager list avd
-            
-          # Check if the AVD config exists using the correct path!
+
+          # Check if the AVD config exists using the correct path
           ls -la $ANDROID_HOME/avd
           if [ -f "$ANDROID_HOME/avd/test_avd.ini" ]; then
             cat $ANDROID_HOME/avd/test_avd.ini
