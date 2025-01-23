@@ -18,12 +18,18 @@ jobs:
       - name: Log in to GitHub Container Registry
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
+      - name: Pull Cached Image (If Exists)
+        continue-on-error: true  # Avoid failure if image does not exist yet
+        run: docker pull ghcr.io/${{ github.repository_owner }}/android-ci:latest
+
       - name: Build and push Docker image
         uses: docker/build-push-action@v3
         with:
           context: .
           push: true
           tags: ghcr.io/${{ github.repository_owner }}/android-ci:latest
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/android-ci:latest
+          cache-to: type=inline
 
   android-tests:
     needs: build-and-push-image
@@ -34,8 +40,13 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Increase Disk Space
-        run: df -h
+      - name: Cache Android SDK
+        uses: actions/cache@v3
+        with:
+          path: /opt/android-sdk
+          key: android-sdk-${{ runner.os }}-${{ hashFiles('Dockerfile') }}
+          restore-keys: |
+            android-sdk-${{ runner.os }}-
 
       - name: Create AVD
         run: |
