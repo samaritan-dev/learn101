@@ -1,109 +1,101 @@
-  name: Android CI
+name: Android CI
 
-  on:
-    push:
-      branches: [main]
-    pull_request:
-      branches: [main]
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
 
-  jobs:
-    build-and-push-image:
-      runs-on: ubuntu-latest
-      permissions:
-        contents: read
-        packages: write  # Required for pushing to GitHub Container Registry
-      steps:
-        - uses: actions/checkout@v3
+jobs:
+  build-and-push-image:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write  # Required for pushing to GitHub Container Registry
+    steps:
+      - uses: actions/checkout@v3
 
-        - name: Log in to GitHub Container Registry
-          run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Log in to GitHub Container Registry
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-        - name: Pull Cached Image (If Exists)
-          continue-on-error: true  # Avoid failure if image does not exist yet
-          run: docker pull ghcr.io/${{ github.repository_owner }}/android-ci:latest
+      - name: Pull Cached Image (If Exists)
+        continue-on-error: true
+        run: docker pull ghcr.io/${{ github.repository_owner }}/android-ci:latest
 
-        - name: Build and push Docker image
-          uses: docker/build-push-action@v3
-          with:
-            context: .
-            push: true
-            tags: ghcr.io/${{ github.repository_owner }}/android-ci:latest
-            cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/android-ci:latest
-            cache-to: type=inline
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v3
+        with:
+          context: .
+          push: true
+          tags: ghcr.io/${{ github.repository_owner }}/android-ci:latest
+          cache-from: type=registry,ref=ghcr.io/${{ github.repository_owner }}/android-ci:latest
+          cache-to: type=inline
 
-    android-tests:
-      needs: build-and-push-image
-      runs-on: ubuntu-latest
-      container:
-        image: ghcr.io/${{ github.repository_owner }}/android-ci:latest
-        options: --user root
-      steps:
-        - uses: actions/checkout@v3
+  android-tests:
+    needs: build-and-push-image
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/${{ github.repository_owner }}/android-ci:latest
+      options: --user root
+    steps:
+      - uses: actions/checkout@v3
 
-        - name: Cache Android SDK
-          uses: actions/cache@v3
-          with:
-            path: /opt/android-sdk
-            key: android-sdk-${{ runner.os }}-${{ hashFiles('Dockerfile') }}
-            restore-keys: |
-              android-sdk-${{ runner.os }}-
+      - name: Cache Android SDK
+        uses: actions/cache@v3
+        with:
+          path: /opt/android-sdk
+          key: android-sdk-${{ runner.os }}-${{ hashFiles('Dockerfile') }}
+          restore-keys: |
+            android-sdk-${{ runner.os }}-
 
-        - name: Create AVD
-          run: |
-            echo "Creating AVD..."
-            export ANDROID_HOME=$HOME/.android
-            export ANDROID_SDK_ROOT=$ANDROID_HOME
-            mkdir -p $ANDROID_HOME/avd
-            echo "Creating AVD..."
-            
-            # Attempt to delete any existing AVD to prevent conflicts
-            avdmanager delete avd -n test_avd || true
-            
-            # Create the AVD
-            avdmanager create avd --name test_avd --package "system-images;android-33;google_apis;x86_64" --abi x86_64 --device "pixel" --force
-            
-            # Wait for a short period to ensure file creation
-            sleep 5
-            
-            # List available AVDs to confirm creation
-            avdmanager list avd
-            
-            # Check if the AVD config exists using the correct path!
-            ls -la $ANDROID_HOME/avd
-            if [ -f "$ANDROID_HOME/avd/test_avd.ini" ]; then
-              cat $ANDROID_HOME/avd/test_avd.ini
-            else
-              echo "AVD config missing (after delay)"
-              exit 1 # Fail the step if the file is still missing
-            fi
-          shell: bash
+      - name: Install Required Android System Image
+        run: |
+          export ANDROID_HOME=/root/.android
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          yes | sdkmanager --install "system-images;android-33;google_apis;x86_64"
 
-        - name: Debug AVD
-          run: |
-            ls -la ~/.android/avd
-            cat ~/.android/avd/test_avd.ini || echo "AVD config missing"
+      - name: Create AVD
+        run: |
+          export ANDROID_HOME=/root/.android
+          export ANDROID_SDK_ROOT=$ANDROID_HOME
+          mkdir -p $ANDROID_HOME/avd
 
-        - name: Start Emulator
-          timeout-minutes: 10
-          run: |
-            echo "Starting emulator..."
-            export DISPLAY=:1
-            nohup emulator -avd test_avd -no-window -no-audio -no-boot-anim -accel on -no-snapshot-load -gpu swiftshader_indirect &
-            sleep 60  # Allow emulator to start
-            adb wait-for-device
-            adb shell input keyevent 82
+          echo "Deleting existing AVD (if any)..."
+          avdmanager delete avd -n test_avd || true
+
+          echo "Creating new AVD..."
+          echo "no" | avdmanager create avd -n test_avd --package "system-images;android-33;google_apis;x86_64" --abi x86_64 --device "pixel" --force
+
+          echo "Verifying AVD creation..."
+          ls -la $ANDROID_HOME/avd
+
+          if [ ! -f "$ANDROID_HOME/avd/test_avd.ini" ]; then
+            echo "AVD configuration file is missing!"
+            exit 1
+          fi
+
+      - name: Start Emulator
+        timeout-minutes: 10
+        run: |
+          export DISPLAY=:1
+          nohup emulator -avd test_avd -no-window -no-audio -no-boot-anim -accel on -no-snapshot-load -gpu swiftshader_indirect &
+          sleep 60  # Allow emulator to start
+
+          echo "Waiting for emulator to be ready..."
+          adb wait-for-device
+          adb shell input keyevent 82
+
+          while [[ "$(adb shell getprop sys.boot_completed | tr -d '\r')" != "1" ]]; do
             echo "Waiting for emulator to boot..."
-            while [[ $(adb shell getprop sys.boot_completed) != 1 ]]; do
-              sleep 5
-              echo "Waiting..."
-            done
-            echo "Emulator booted!"
+            sleep 5
+          done
+          echo "Emulator is ready!"
 
-        - name: Grant execute permission for gradlew
-          run: chmod +x gradlew
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
 
-        - name: Run Unit Tests
-          run: ./gradlew test
+      - name: Run Unit Tests
+        run: ./gradlew test
 
-        - name: Run UI Tests
-          run: ./gradlew connectedCheck
+      - name: Run UI Tests
+        run: ./gradlew connectedCheck
