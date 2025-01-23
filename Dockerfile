@@ -8,7 +8,7 @@ RUN apt-get update && \
         unzip \
         curl \
         libx11-6 libx11-dev libgl1-mesa-glx libgl1-mesa-dev \
-        libncurses5 libstdc++6 \
+        libncurses5 libstdc++6 bash \
         && rm -rf /var/lib/apt/lists/*
 
 # Set up Android SDK paths
@@ -23,18 +23,18 @@ RUN mkdir -p $ANDROID_HOME/cmdline-tools/latest && \
     rm sdk.zip
 
 # Ensure sdkmanager is available
+RUN chmod +x $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager
 RUN ln -s $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager /usr/local/bin/sdkmanager
 
+# Verify sdkmanager is working
+RUN sdkmanager --version
+
 # Accept all SDK licenses
-RUN yes | /usr/local/bin/sdkmanager --sdk_root="${ANDROID_HOME}" --licenses > /dev/null
+RUN yes | sdkmanager --sdk_root="${ANDROID_HOME}" --licenses > /dev/null
 
-# Install required Android components
-RUN sdkmanager --sdk_root="${ANDROID_HOME}" --list | grep "system-images" | tail -n 1 | \
-    awk -F ';' '{print "system-images;"$1";google_apis;x86_64"}' > latest_platform.txt
-
-# Extract the latest system image package
-RUN LATEST_PLATFORM=$(cat latest_platform.txt) && \
-    sdkmanager --sdk_root="${ANDROID_HOME}" --install "$LATEST_PLATFORM" "extras;android;m2repository" "platform-tools"
+# Install required Android components for Android 35 (update the system image version)
+RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install "system-images;android-35;google_apis;x86_64" \
+    "extras;android;m2repository" "platform-tools"
 
 # Set up necessary directories for the AVD and emulator
 RUN mkdir -p ~/.android/avd && \
@@ -45,6 +45,3 @@ RUN sdkmanager --list
 
 # Set working directory
 WORKDIR /app
-
-# Install curl (for fetching latest platform dynamically) and tools
-RUN apt-get update && apt-get install -y curl
