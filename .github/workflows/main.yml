@@ -52,9 +52,14 @@ jobs:
         run: |
           echo "Creating AVD..."
           export ANDROID_SDK_ROOT=$ANDROID_HOME
-          mkdir -p ~/.android/avd
-          echo "no" | avdmanager create avd --name test_avd --package "system-images;android-33;google_apis;x86_64" --abi x86_64 --device "pixel" --force
+          mkdir -p ~/.android/avd  # Ensure the AVD directory exists
+          echo "Creating AVD..."
+          avdmanager create avd --name test_avd --package "system-images;android-33;google_apis;x86_64" --abi x86_64 --device "pixel" --force -v
+          # List available AVDs to confirm creation
           avdmanager list avd
+          # Check if the AVD config exists
+          ls -la ~/.android/avd
+          cat ~/.android/avd/test_avd.ini || echo "AVD config missing"
 
       - name: Debug AVD
         run: |
