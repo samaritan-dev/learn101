@@ -36,7 +36,7 @@ RUN sdkmanager --version
 RUN yes | sdkmanager --sdk_root="${ANDROID_HOME}" --licenses > /dev/null
 
 # Install required Android components for Android 35 (update the system image version)
-RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install "system-images;android-35;google_apis;x86_64" \
+RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install "system-images;android-33;google_apis;x86_64" \
     "extras;android;m2repository" "platform-tools"
 
 # Set up necessary directories for the AVD and emulator
