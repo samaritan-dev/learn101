@@ -22,11 +22,13 @@ RUN mkdir -p $ANDROID_HOME/cmdline-tools/latest && \
     unzip sdk.zip -d $ANDROID_HOME/cmdline-tools/latest && \
     rm sdk.zip
 
+# Ensure sdkmanager is available
+RUN ln -s $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager /usr/local/bin/sdkmanager
+
 # Accept all SDK licenses
-RUN yes | sdkmanager --sdk_root="${ANDROID_HOME}" --licenses > /dev/null
+RUN yes | /usr/local/bin/sdkmanager --sdk_root="${ANDROID_HOME}" --licenses > /dev/null
 
 # Install required Android components
-# First, fetch the list of available platforms to determine the latest
 RUN sdkmanager --sdk_root="${ANDROID_HOME}" --list | grep "system-images" | tail -n 1 | \
     awk -F ';' '{print "system-images;"$1";google_apis;x86_64"}' > latest_platform.txt
 
