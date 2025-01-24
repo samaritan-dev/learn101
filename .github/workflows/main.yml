@@ -81,12 +81,12 @@ jobs:
           sudo Xvfb :1 -screen 0 1024x768x24 &
           export DISPLAY=:1
 
-      - name: Launch emulator
+      - name: Launch emulator (no KVM)
         run: |
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
 
-          nohup $ANDROID_HOME/emulator/emulator -avd test_emulator -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -verbose &
+          nohup $ANDROID_HOME/emulator/emulator -avd test_emulator -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -accel off &
           adb wait-for-device
           sleep 5
           adb shell input keyevent 82
