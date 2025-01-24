@@ -5,6 +5,7 @@ plugins {
 }
 
 android {
+
     namespace = "quantumgate.learning.learn101"
     compileSdk = 35
 
