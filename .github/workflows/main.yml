@@ -97,6 +97,10 @@ jobs:
           mkdir -p ~/.android/avd
           touch ~/.android/repositories.cfg
 
+      - name: Accept SDK licenses
+        run: |
+          yes | sdkmanager --licenses || true
+
       - name: Install emulator and system image
         run: |
           sdkmanager --install "system-images;android-33;google_apis;x86_64" "emulator" "platform-tools"
@@ -104,7 +108,7 @@ jobs:
 
       - name: Create AVD
         run: |
-          echo "y" | avdmanager create avd -n test_emulator -k "system-images;android-33;google_apis;x86_64" --force
+          echo "no" | avdmanager create avd -n test_emulator -k "system-images;android-33;google_apis;x86_64" --force
           ls -l ~/.android/avd # Debug: List AVDs to confirm creation
 
       - name: Launch emulator
