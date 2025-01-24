@@ -55,12 +55,23 @@ jobs:
           mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
           rm cmdline-tools.zip
 
-          yes | sdkmanager --licenses
-          sdkmanager --install "platforms;android-33" "system-images;android-33;google_apis;x86_64" "emulator" "platform-tools"
+          yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmdline-tools;latest" "platforms;android-33" "system-images;android-33;google_apis;x86_64" "emulator" "platform-tools"
+
+      - name: Verify Android SDK Installation
+        run: |
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
+          echo "ANDROID_HOME=$ANDROID_HOME"
+          ls -al $ANDROID_HOME/cmdline-tools/latest/bin
+          sdkmanager --list
 
       - name: Create AVD
         run: |
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
           export ANDROID_AVD_HOME=$HOME/.android/avd
+
           mkdir -p $ANDROID_AVD_HOME
           echo "no" | avdmanager create avd -n test_emulator -k "system-images;android-33;google_apis;x86_64" --device "pixel_3a" --force
           ls -l $ANDROID_AVD_HOME # Debugging: Confirm AVD was created
@@ -72,8 +83,10 @@ jobs:
 
       - name: Launch emulator
         run: |
-          export EMULATOR_PATH=$ANDROID_HOME/emulator/emulator
-          nohup $EMULATOR_PATH -avd test_emulator -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -verbose &
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
+
+          nohup $ANDROID_HOME/emulator/emulator -avd test_emulator -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -verbose &
           adb wait-for-device
           sleep 5
           adb shell input keyevent 82
