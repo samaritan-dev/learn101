@@ -33,7 +33,7 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          sdk-version: '33' # Target SDK 33
+          sdk-version: '33'
           ndk-version: '25.2.8563518' # Optional: If you use NDK
 
       - name: Cache Gradle dependencies
@@ -92,6 +92,11 @@ jobs:
           sudo Xvfb :1 -screen 0 1024x768x24 &
           export DISPLAY=:1
 
+      - name: Create .android directory and repositories.cfg
+        run: |
+          mkdir -p ~/.android/avd
+          touch ~/.android/repositories.cfg
+
       - name: Install emulator and system image
         run: |
           sdkmanager --install "system-images;android-33;google_apis;x86_64" "emulator" "platform-tools"
@@ -99,7 +104,8 @@ jobs:
 
       - name: Create AVD
         run: |
-          echo "no" | avdmanager create avd -n test_emulator -k "system-images;android-33;google_apis;x86_64" --force
+          echo "y" | avdmanager create avd -n test_emulator -k "system-images;android-33;google_apis;x86_64" --force
+          ls -l ~/.android/avd # Debug: List AVDs to confirm creation
 
       - name: Launch emulator
         run: |
