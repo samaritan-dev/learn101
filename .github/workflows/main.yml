@@ -8,24 +8,32 @@ on:
 
 jobs:
   build:
-    runs-on: ubuntu-latest # Use a Linux runner
+    runs-on: ubuntu-latest
 
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
 
       - name: Set up JDK 17
+        id: setup-java
         uses: actions/setup-java@v3
         with:
-          java-version: '17' # Match your project's Java version
+          java-version: '17'
           distribution: 'temurin'
-          cache: gradle
+
+      - name: Cache JDK
+        uses: actions/cache@v3
+        with:
+          path: ~/.java
+          key: ${{ runner.os }}-jdk-${{ steps.setup-java.outputs.java-version }}-temurin
+          restore-keys: |
+            ${{ runner.os }}-jdk-
 
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          sdk-version: '34' # Use your project's compileSdkVersion
-          ndk-version: '25.2.8563518' # Optional: If you use the NDK
+          sdk-version: '34'
+          ndk-version: '25.2.8563518'
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v3
@@ -37,11 +45,47 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
+      - name: Cache Android SDK components
+        id: cache-android-sdk
+        uses: actions/cache@v3
+        with:
+          path: ~/.android/cache
+          key: ${{ runner.os }}-android-sdk-cache-${{ hashFiles('**/build.gradle', '**/build.gradle.kts') }}
+          restore-keys: |
+            ${{ runner.os }}-android-sdk-cache-
+
+      - name: Cache Android SDK Platform Tools
+        id: cache-android-platform-tools
+        uses: actions/cache@v3
+        with:
+          path: ~/Android/Sdk/platform-tools
+          key: ${{ runner.os }}-android-platform-tools
+          restore-keys: |
+            ${{ runner.os }}-android-platform-tools
+
+      - name: Cache Android SDK Build Tools
+        id: cache-android-build-tools
+        uses: actions/cache@v3
+        with:
+          path: ~/Android/Sdk/build-tools
+          key: ${{ runner.os }}-android-build-tools
+          restore-keys: |
+            ${{ runner.os }}-android-build-tools
+
+      - name: Cache Android SDK Platforms
+        id: cache-android-platforms
+        uses: actions/cache@v3
+        with:
+          path: ~/Android/Sdk/platforms
+          key: ${{ runner.os }}-android-platforms
+          restore-keys: |
+            ${{ runner.os }}-android-platforms
+
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
       - name: Build with Gradle
-        run: ./gradlew assembleDebug # Or assembleRelease if you prefer
+        run: ./gradlew assembleDebug
 
       - name: Upload APK (Optional)
         uses: actions/upload-artifact@v3
