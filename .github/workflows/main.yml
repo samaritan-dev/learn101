@@ -9,7 +9,7 @@ on:
 jobs:
   build-and-test:
     runs-on: ubuntu-latest
-    timeout-minutes: 60 # Set a timeout to prevent indefinite runs
+    timeout-minutes: 60
 
     steps:
       - name: Checkout code
@@ -33,8 +33,8 @@ jobs:
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          sdk-version: '34'
-          ndk-version: '25.2.8563518'
+          sdk-version: '34' # Or your target SDK version
+          ndk-version: '25.2.8563518' # Optional: If you use NDK
 
       - name: Cache Gradle dependencies
         uses: actions/cache@v3
@@ -47,7 +47,6 @@ jobs:
             ${{ runner.os }}-gradle-
 
       - name: Cache Android SDK components
-        id: cache-android-sdk
         uses: actions/cache@v3
         with:
           path: ~/.android/cache
@@ -56,7 +55,6 @@ jobs:
             ${{ runner.os }}-android-sdk-cache-
 
       - name: Cache Android SDK Platform Tools
-        id: cache-android-platform-tools
         uses: actions/cache@v3
         with:
           path: ~/Android/Sdk/platform-tools
@@ -65,7 +63,6 @@ jobs:
             ${{ runner.os }}-android-platform-tools
 
       - name: Cache Android SDK Build Tools
-        id: cache-android-build-tools
         uses: actions/cache@v3
         with:
           path: ~/Android/Sdk/build-tools
@@ -74,7 +71,6 @@ jobs:
             ${{ runner.os }}-android-build-tools
 
       - name: Cache Android SDK Platforms
-        id: cache-android-platforms
         uses: actions/cache@v3
         with:
           path: ~/Android/Sdk/platforms
@@ -87,23 +83,30 @@ jobs:
           sudo apt-get update
           sudo apt-get install -yq --no-install-recommends \
             libgl1-mesa-dri \
-            libgl1-mesa-glx \
-            libx11-6
+            libxext6 \
+            libxrender1 \
+            libxi6
 
-      - name: Install emulator and dependencies
+      - name: Set up display for emulator
+        run: |
+          sudo Xvfb :1 -screen 0 1024x768x24 &
+          export DISPLAY=:1
+
+      - name: Install emulator and system image
         run: |
           sdkmanager --install "system-images;android-30;google_apis;x86_64" "emulator" "platform-tools"
           echo "sdk.dir=$ANDROID_HOME" >> local.properties
 
       - name: Create AVD
         run: |
-          avdmanager create avd -n test_emulator -k "system-images;android-30;google_apis;x86_64" --force
+          echo "no" | avdmanager create avd -n test_emulator -k "system-images;android-30;google_apis;x86_64" --force
 
       - name: Launch emulator
         run: |
-          nohup emulator -avd test_emulator -no-window -no-audio -no-boot-anim &
+          nohup emulator -avd test_emulator -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect &
           adb wait-for-device
-          adb shell input keyevent 82 # Unlock screen
+          adb shell input keyevent 82 # Unlock screen (wake up)
+          sleep 5 # Give time for animations to complete
 
       - name: Make gradlew executable
         run: chmod +x ./gradlew
@@ -112,11 +115,11 @@ jobs:
         run: ./gradlew assembleDebug
 
       - name: Run UI tests
-        run: ./gradlew connectedCheck # Use connectedCheck for UI tests
+        run: ./gradlew connectedCheck
 
       - name: Upload APK (Optional)
         uses: actions/upload-artifact@v3
-        if: always() # Run even if tests fail
+        if: always()
         with:
           name: app-debug.apk
           path: app/build/outputs/apk/debug/app-debug.apk
