@@ -32,31 +32,38 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-gradle-
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Install system dependencies for emulator
+      - name: Install system dependencies
         run: |
           sudo apt-get update
           sudo apt-get install -yq --no-install-recommends \
             libgl1-mesa-dri \
             libxext6 \
             libxrender1 \
-            libxi6
+            libxi6 \
+            unzip \
+            wget \
+            xvfb
 
-      - name: Accept SDK licenses
-        run: yes | ${ANDROID_HOME}/cmdline-tools/latest/bin/sdkmanager --licenses || true
-
-      - name: Install emulator and system image
+      - name: Set up Android SDK
         run: |
+          export ANDROID_HOME=$HOME/android-sdk
+          export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
+
+          mkdir -p $ANDROID_HOME/cmdline-tools
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
+          unzip -q cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
+          mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
+          rm cmdline-tools.zip
+
+          yes | sdkmanager --licenses
           sdkmanager --install "platforms;android-33" "system-images;android-33;google_apis;x86_64" "emulator" "platform-tools"
-          sdkmanager --list | grep "system-images;android-33" # Debug: Confirm system image installed
 
       - name: Create AVD
         run: |
-          mkdir -p ~/.android/avd
+          export ANDROID_AVD_HOME=$HOME/.android/avd
+          mkdir -p $ANDROID_AVD_HOME
           echo "no" | avdmanager create avd -n test_emulator -k "system-images;android-33;google_apis;x86_64" --device "pixel_3a" --force
-          ls -l ~/.android/avd # Debug: Confirm AVD was created
+          ls -l $ANDROID_AVD_HOME # Debugging: Confirm AVD was created
 
       - name: Set up display for emulator
         run: |
@@ -65,9 +72,8 @@ jobs:
 
       - name: Launch emulator
         run: |
-          export AVD_HOME="$HOME/.android/avd"
-          EMULATOR_PATH="$ANDROID_HOME/emulator/emulator"
-          nohup "$EMULATOR_PATH" -avd test_emulator -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -verbose &
+          export EMULATOR_PATH=$ANDROID_HOME/emulator/emulator
+          nohup $EMULATOR_PATH -avd test_emulator -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -verbose &
           adb wait-for-device
           sleep 5
           adb shell input keyevent 82

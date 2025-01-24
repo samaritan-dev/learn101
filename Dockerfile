@@ -1,30 +1,33 @@
-FROM openjdk:17-jdk-slim
+# Use a base image with OpenJDK and Android SDK pre-installed
+FROM ghcr.io/cirruslabs/android-sdk:33
 
-# Install necessary tools (SDK, NDK, etc.)
-RUN apt-get update && \
-    apt-get install -y --no-install-recommends \
-        wget \
-        unzip \
-        && rm -rf /var/lib/apt/lists/*
+# Set environment variables
+ENV ANDROID_HOME /opt/android-sdk
+ENV PATH $ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/tools:$PATH
 
-# Download and install Android SDK Command-line Tools
-RUN wget https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O sdk.zip
-RUN unzip sdk.zip -d /opt/
-RUN rm sdk.zip
-ENV ANDROID_HOME /opt/cmdline-tools
-ENV PATH "$PATH:${ANDROID_HOME}/bin:${ANDROID_HOME}/tools:${ANDROID_HOME}/tools/bin:${ANDROID_HOME}/platform-tools"
+# Install required dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    libgl1-mesa-dri \
+    libxext6 \
+    libxrender1 \
+    libxi6 \
+    unzip \
+    wget \
+    && rm -rf /var/lib/apt/lists/*
 
-# Set up Android SDK
-RUN sdkmanager --sdk_root="${ANDROID_HOME}" --install "platforms;android-33" "build-tools;33.0.2" --licenses --update
+# Accept Android SDK licenses
+RUN yes | sdkmanager --licenses || true
 
-# Copy project files
-COPY . /app
+# Install required SDK components
+RUN sdkmanager --install \
+    "platforms;android-33" \
+    "system-images;android-33;google_apis;x86_64" \
+    "emulator" \
+    "platform-tools"
 
-# Set working directory
-WORKDIR /app
+# Create an AVD
+RUN mkdir -p $ANDROID_HOME/.android/avd && \
+    echo "no" | avdmanager create avd -n test_emulator -k "system-images;android-33;google_apis;x86_64" --device "pixel_3a" --force
 
-# Grant execute permission for gradlew
-RUN chmod +x gradlew
-
-# Build the project
-CMD ["./gradlew", "assembleDebug"]
+# Start the emulator automatically when the container starts
+CMD ["sh", "-c", "nohup $ANDROID_HOME/emulator/emulator -avd test_emulator -no-window -no-audio -no-boot-anim -gpu swiftshader_indirect -verbose & sleep 5 && adb wait-for-device && adb shell input keyevent 82 && tail -f /dev/null"]
