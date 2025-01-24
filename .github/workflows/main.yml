@@ -8,7 +8,7 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: macos-latest
+    runs-on: ubuntu-latest
     timeout-minutes: 60
 
     steps:
@@ -34,7 +34,6 @@ jobs:
 
       - name: Install system dependencies
         run: |
-          brew install --cask android-sdk
           sudo apt-get update
           sudo apt-get install -yq --no-install-recommends \
             libgl1-mesa-dri \
@@ -51,13 +50,13 @@ jobs:
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
 
           mkdir -p $ANDROID_HOME/cmdline-tools
-          wget -q https://dl.google.com/android/repository/commandlinetools-darwin-9477386_latest.zip -O cmdline-tools.zip
+          wget -q https://dl.google.com/android/repository/commandlinetools-linux-9477386_latest.zip -O cmdline-tools.zip
           unzip -q cmdline-tools.zip -d $ANDROID_HOME/cmdline-tools
           mv $ANDROID_HOME/cmdline-tools/cmdline-tools $ANDROID_HOME/cmdline-tools/latest
           rm cmdline-tools.zip
 
           yes | $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --licenses
-          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmdline-tools;latest" "platforms;android-33" "system-images;android-33;google_apis;arm64-v8a" "emulator" "platform-tools"
+          $ANDROID_HOME/cmdline-tools/latest/bin/sdkmanager --install "cmdline-tools;latest" "platforms;android-33" "system-images;android-33;google_apis;x86_64" "emulator" "platform-tools"
 
       - name: Verify Android SDK Installation
         run: |
@@ -67,14 +66,14 @@ jobs:
           ls -al $ANDROID_HOME/cmdline-tools/latest/bin
           sdkmanager --list
 
-      - name: Create AVD for ARM
+      - name: Create AVD
         run: |
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/cmdline-tools/latest/bin:$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
           export ANDROID_AVD_HOME=$HOME/.android/avd
 
           mkdir -p $ANDROID_AVD_HOME
-          echo "no" | avdmanager create avd -n test_emulator -k "system-images;android-33;google_apis;arm64-v8a" --device "pixel_3a" --force
+          echo "no" | avdmanager create avd -n test_emulator -k "system-images;android-33;google_apis;x86_64" --device "pixel_3a" --force
           ls -l $ANDROID_AVD_HOME # Debugging: Confirm AVD was created
 
       - name: Set up display for emulator
@@ -82,7 +81,7 @@ jobs:
           sudo Xvfb :1 -screen 0 1024x768x24 &
           export DISPLAY=:1
 
-      - name: Launch emulator (ARM-based)
+      - name: Launch emulator (no KVM)
         run: |
           export ANDROID_HOME=$HOME/android-sdk
           export PATH=$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$PATH
