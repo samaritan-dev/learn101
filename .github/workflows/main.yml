@@ -7,8 +7,9 @@ on:
     branches: [main]
 
 jobs:
-  build:
+  build-and-test:
     runs-on: ubuntu-latest
+    timeout-minutes: 60 # Set a timeout to prevent indefinite runs
 
     steps:
       - name: Checkout code
@@ -81,14 +82,48 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-android-platforms
 
+      - name: Install system dependencies for emulator
+        run: |
+          sudo apt-get update
+          sudo apt-get install -yq --no-install-recommends \
+            libgl1-mesa-dri \
+            libgl1-mesa-glx \
+            libx11-6
+
+      - name: Install emulator and dependencies
+        run: |
+          sdkmanager --install "system-images;android-30;google_apis;x86_64" "emulator" "platform-tools"
+          echo "sdk.dir=$ANDROID_HOME" >> local.properties
+
+      - name: Create AVD
+        run: |
+          avdmanager create avd -n test_emulator -k "system-images;android-30;google_apis;x86_64" --force
+
+      - name: Launch emulator
+        run: |
+          nohup emulator -avd test_emulator -no-window -no-audio -no-boot-anim &
+          adb wait-for-device
+          adb shell input keyevent 82 # Unlock screen
+
       - name: Make gradlew executable
         run: chmod +x ./gradlew
 
       - name: Build with Gradle
         run: ./gradlew assembleDebug
 
+      - name: Run UI tests
+        run: ./gradlew connectedCheck # Use connectedCheck for UI tests
+
       - name: Upload APK (Optional)
         uses: actions/upload-artifact@v3
+        if: always() # Run even if tests fail
         with:
           name: app-debug.apk
           path: app/build/outputs/apk/debug/app-debug.apk
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        if: always()
+        with:
+          name: test-results
+          path: app/build/reports/androidTests/connected/
