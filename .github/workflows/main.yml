@@ -56,20 +56,23 @@ jobs:
         run: yes | sdkmanager --licenses
       - name: Create AVD
         run: |
-          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
-            --verbose \ # Crucial for debugging AVD creation
+          # Capture avdmanager output
+          avd_output=$(echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             --force \
             -n test \
             -k "system-images;android-33;google_apis;x86_64" \
             --abi x86_64 \
-            --device "pixel_6"
-          # Check for AVD creation success (more robust)
+            --device "pixel_6" 2>&1) # Redirect stderr to stdout
+
+          # Check for AVD creation success
           if [[ -f "$HOME/.android/avd/test.avd/config.ini" ]]; then
             echo "AVD created successfully!"
           else
-            echo "ERROR: AVD creation failed! Inspect avdmanager output above. Listing avds:"
+            echo "ERROR: AVD creation failed!"
+            echo "avdmanager output:"
+            echo "$avd_output" # Print captured output
             $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
-            ls -l "$HOME/.android/avd" || true # List AVDs directory (if it exists)
+            ls -l "$HOME/.android/avd" || true
             exit 1
           fi
       - name: Start Emulator
