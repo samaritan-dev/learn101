@@ -26,7 +26,7 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
-      - name: Set up Android SDK
+      - name: Set up Android SDK (with verbose output and continue-on-error)
         uses: android-actions/setup-android@v3
         id: setup-android
         with:
@@ -37,19 +37,20 @@ jobs:
             platforms;android-33
             build-tools;33.0.2
             system-images;android-33;google_apis;x86_64
+        continue-on-error: true # Crucial for debugging!
       - name: Check SDK Installation (CRITICAL DEBUGGING)
         run: |
           echo "ANDROID_HOME: ${{ steps.setup-android.outputs.android_home }}"
           if [ ! -d "$ANDROID_HOME/system-images/android-33/google_apis/x86_64" ]; then
-            echo "ERROR: System image not found! Listing contents of $ANDROID_HOME/system-images:"
-            ls -l $ANDROID_HOME/system-images || true # Handle potential missing directory
+            echo "ERROR: System image NOT found! Listing contents of $ANDROID_HOME/system-images:"
+            ls -l $ANDROID_HOME/system-images || true
             echo "Listing SDK components using sdkmanager:"
             sdkmanager --list --verbose
             exit 1
           fi
           echo "System image found. Continuing..."
       - name: Accept licenses
-        run: yes | sdkmanager --licenses
+        run: yes | sdkmanager --licenses # Try accepting licenses even if the image is not found
       - name: Create AVD
         run: |
           echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --force -n test -k "system-images;android-33;google_apis;x86_64"
