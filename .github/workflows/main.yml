@@ -9,7 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    timeout-minutes: 60 # Set a timeout to prevent indefinite runs
+    timeout-minutes: 60
     steps:
       - uses: actions/checkout@v3
       - name: Set up JDK 17
@@ -26,17 +26,23 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
-      - name: Set up Android SDK and Emulator
+      - name: Set up Android SDK
         uses: android-actions/setup-android@v3
         with:
-          sdk-components: 'platform-tools,platforms;android-33,build-tools;33.0.2,system-images;android-33;google_apis;x86_64'
-          emulator-options: -no-window -gpu swiftshader_indirect -no-audio
-      - name: Create and start emulator
+          java-version: 17
+          sdk-components: |
+            platform-tools
+            platforms;android-33
+            build-tools;33.0.2
+            system-images;android-33;google_apis;x86_64
+      - name: Create AVD
         run: |
           echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --force -n test -k "system-images;android-33;google_apis;x86_64"
+      - name: Start Emulator
+        run: |
           $ANDROID_HOME/emulator/emulator -avd test -no-window -gpu swiftshader_indirect -no-audio &
           adb wait-for-device
-          adb shell input keyevent 82 # Wake up the device
+          adb shell input keyevent 82
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
