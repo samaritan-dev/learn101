@@ -26,7 +26,7 @@ jobs:
           key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
           restore-keys: |
             ${{ runner.os }}-gradle-
-      - name: Set up Android SDK (with verbose output and continue-on-error)
+      - name: Set up Android SDK (with continue-on-error)
         uses: android-actions/setup-android@v3
         id: setup-android
         with:
@@ -37,49 +37,45 @@ jobs:
             platforms;android-33
             build-tools;33.0.2
             system-images;android-33;google_apis;x86_64
-        continue-on-error: true # Crucial for debugging!
+        continue-on-error: true
       - name: Attempt to install the system image directly (DEBUGGING)
+        run: sdkmanager "system-images;android-33;google_apis;x86_64" || true
+      - name: Check SDK Installation
         run: |
-          sdkmanager "system-images;android-33;google_apis;x86_64" --verbose || true
-      - name: Check SDK Installation (CRITICAL DEBUGGING)
-        run: |
-          echo "ANDROID_HOME: ${{ steps.setup-android.outputs.android_home }}"
           if [ ! -d "$ANDROID_HOME/system-images/android-33/google_apis/x86_64" ]; then
-            echo "ERROR: System image NOT found. Inspect previous step logs for setup-android and manual install attempt."
+            echo "ERROR: System image NOT found. Inspect previous step logs."
             ls -l $ANDROID_HOME/system-images || true
-            echo "Listing SDK components using sdkmanager:"
             sdkmanager --list --verbose
             exit 1
           fi
-          echo "System image found. Continuing..."
+          echo "System image found."
       - name: Accept licenses
         run: yes | sdkmanager --licenses
       - name: Create AVD
         run: |
-          # Capture avdmanager output
           avd_output=$(echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
             --force \
             -n test \
             -k "system-images;android-33;google_apis;x86_64" \
             --abi x86_64 \
-            --device "pixel_6" 2>&1) # Redirect stderr to stdout
-
-          # Check for AVD creation success
-          if [[ -f "$HOME/.android/avd/test.avd/config.ini" ]]; then
-            echo "AVD created successfully!"
+            --device "pixel_6" 2>&1)
+          avd_path=$(echo "$avd_output" | grep "Path:" | awk '{print $2}')
+          if [[ -f "$avd_path/config.ini" ]]; then
+            echo "AVD created successfully at $avd_path!"
           else
             echo "ERROR: AVD creation failed!"
             echo "avdmanager output:"
-            echo "$avd_output" # Print captured output
+            echo "$avd_output"
             $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
             ls -l "$HOME/.android/avd" || true
+            ls -l "/home/runner/.config/.android/avd" || true
             exit 1
           fi
       - name: Start Emulator
         run: |
           $ANDROID_HOME/emulator/emulator -avd test -no-window -gpu swiftshader_indirect -no-audio &
           adb wait-for-device
-          adb shell input keyevent 82 # Wake up the device
+          adb shell input keyevent 82
           adb shell settings put global window_animation_scale 0
           adb shell settings put global transition_animation_scale 0
           adb shell settings put global animator_duration_scale 0
