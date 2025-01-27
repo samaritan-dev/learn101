@@ -38,11 +38,14 @@ jobs:
             build-tools;33.0.2
             system-images;android-33;google_apis;x86_64
         continue-on-error: true # Crucial for debugging!
+      - name: Attempt to install the system image directly (DEBUGGING)
+        run: |
+          sdkmanager "system-images;android-33;google_apis;x86_64" --verbose || true
       - name: Check SDK Installation (CRITICAL DEBUGGING)
         run: |
           echo "ANDROID_HOME: ${{ steps.setup-android.outputs.android_home }}"
           if [ ! -d "$ANDROID_HOME/system-images/android-33/google_apis/x86_64" ]; then
-            echo "ERROR: System image NOT found! Listing contents of $ANDROID_HOME/system-images:"
+            echo "ERROR: System image NOT found. Inspect previous step logs for setup-android and manual install attempt."
             ls -l $ANDROID_HOME/system-images || true
             echo "Listing SDK components using sdkmanager:"
             sdkmanager --list --verbose
