@@ -28,7 +28,7 @@ jobs:
             ${{ runner.os }}-gradle-
       - name: Set up Android SDK
         uses: android-actions/setup-android@v3
-        id: setup-android # Give an ID to the step
+        id: setup-android
         with:
           java-version: 17
           cmdline-tools-version: "latest"
@@ -37,15 +37,13 @@ jobs:
             platforms;android-33
             build-tools;33.0.2
             system-images;android-33;google_apis;x86_64
-      - name: Check ANDROID_HOME (DEBUGGING)
-        run: echo "ANDROID_HOME: ${{ steps.setup-android.outputs.android-home }}"
-      - name: List SDK components (DEBUGGING)
+      - name: Print ANDROID_HOME and List SDK components
         run: |
-          ls -l $ANDROID_HOME/system-images # Check if the directory exists
+          echo "ANDROID_HOME: ${{ steps.setup-android.outputs.android_home }}"
+          ls -l $ANDROID_HOME/system-images
           sdkmanager --list --verbose
       - name: Accept licenses
-        run: |
-          yes | sdkmanager --licenses
+        run: yes | sdkmanager --licenses
       - name: Create AVD
         run: |
           echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --force -n test -k "system-images;android-33;google_apis;x86_64"
