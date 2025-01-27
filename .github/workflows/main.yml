@@ -53,21 +53,25 @@ jobs:
           fi
           echo "System image found. Continuing..."
       - name: Accept licenses
-        run: yes | sdkmanager --licenses # Try accepting licenses even if the image is not found
+        run: yes | sdkmanager --licenses
       - name: Create AVD
         run: |
           echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+            --verbose \ # Crucial for debugging AVD creation
             --force \
             -n test \
             -k "system-images;android-33;google_apis;x86_64" \
             --abi x86_64 \
             --device "pixel_6"
-          # Wait for AVD creation to complete (robust check)
-          while [[ ! -f "$HOME/.android/avd/test.avd/config.ini" ]]; do
-            echo "Waiting for AVD creation..."
-            sleep 5
-          done
-          echo "AVD created successfully!"
+          # Check for AVD creation success (more robust)
+          if [[ -f "$HOME/.android/avd/test.avd/config.ini" ]]; then
+            echo "AVD created successfully!"
+          else
+            echo "ERROR: AVD creation failed! Inspect avdmanager output above. Listing avds:"
+            $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
+            ls -l "$HOME/.android/avd" || true # List AVDs directory (if it exists)
+            exit 1
+          fi
       - name: Start Emulator
         run: |
           $ANDROID_HOME/emulator/emulator -avd test -no-window -gpu swiftshader_indirect -no-audio &
