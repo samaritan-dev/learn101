@@ -56,11 +56,29 @@ jobs:
       - name: Checkout the code
         uses: actions/checkout@v3
 
+      - name: Setup Android SDK
+        run: |
+          echo "ANDROID_HOME=/Users/runner/Library/Android/sdk" >> $GITHUB_ENV
+          echo "ANDROID_SDK_ROOT=/Users/runner/Library/Android/sdk" >> $GITHUB_ENV
+          echo "/Users/runner/Library/Android/sdk/platform-tools" >> $GITHUB_PATH
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils
+
       - name: Run espresso tests
         uses: reactivecircus/android-emulator-runner@v2
         with:
           api-level: 29
-          script: ./gradlew connectedCheck
+          script: |
+            # Ensure the emulator is booted and accessible
+            /Users/runner/Library/Android/sdk/platform-tools/adb -s emulator-5554 wait-for-device
+            /Users/runner/Library/Android/sdk/platform-tools/adb -s emulator-5554 shell getprop sys.boot_completed
+            # List connected devices for debugging
+            /Users/runner/Library/Android/sdk/platform-tools/adb devices
+            # Run the tests
+            ./gradlew connectedCheck
 
       - name: Upload test report
         uses: actions/upload-artifact@v3
