@@ -36,6 +36,8 @@ jobs:
             platforms;android-33
             build-tools;33.0.2
             system-images;android-33;google_apis;x86_64
+      - name: List SDK components (DEBUGGING)
+        run: sdkmanager --list sdk --verbose
       - name: Create AVD
         run: |
           echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --force -n test -k "system-images;android-33;google_apis;x86_64"
