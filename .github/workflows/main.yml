@@ -56,7 +56,12 @@ jobs:
         run: yes | sdkmanager --licenses # Try accepting licenses even if the image is not found
       - name: Create AVD
         run: |
-          echo "y" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd --force -n test -k "system-images;android-33;google_apis;x86_64"
+          echo "no" | $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager create avd \
+            --force \
+            -n test \
+            -k "system-images;android-33;google_apis;x86_64" \
+            --abi x86_64 \
+            --device "pixel_6" # Or another suitable device definition
       - name: Start Emulator
         run: |
           $ANDROID_HOME/emulator/emulator -avd test -no-window -gpu swiftshader_indirect -no-audio &
