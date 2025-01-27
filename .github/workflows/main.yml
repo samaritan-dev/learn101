@@ -37,11 +37,17 @@ jobs:
             platforms;android-33
             build-tools;33.0.2
             system-images;android-33;google_apis;x86_64
-      - name: Print ANDROID_HOME and List SDK components
+      - name: Check SDK Installation (CRITICAL DEBUGGING)
         run: |
           echo "ANDROID_HOME: ${{ steps.setup-android.outputs.android_home }}"
-          ls -l $ANDROID_HOME/system-images
-          sdkmanager --list --verbose
+          if [ ! -d "$ANDROID_HOME/system-images/android-33/google_apis/x86_64" ]; then
+            echo "ERROR: System image not found! Listing contents of $ANDROID_HOME/system-images:"
+            ls -l $ANDROID_HOME/system-images || true # Handle potential missing directory
+            echo "Listing SDK components using sdkmanager:"
+            sdkmanager --list --verbose
+            exit 1
+          fi
+          echo "System image found. Continuing..."
       - name: Accept licenses
         run: yes | sdkmanager --licenses
       - name: Create AVD
