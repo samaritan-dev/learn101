@@ -60,17 +60,20 @@ jobs:
             --abi x86_64 \
             --device "pixel_6" 2>&1)
           avd_path=$(echo "$avd_output" | grep "Path:" | awk '{print $2}')
-          if [[ -f "$avd_path/config.ini" ]]; then
-            echo "AVD created successfully at $avd_path!"
-          else
-            echo "ERROR: AVD creation failed!"
+
+          # Wait for AVD creation to fully complete (check for hardware-qemu.ini)
+          timeout 60 sh -c 'while [[ ! -f "$avd_path/hardware-qemu.ini" ]]; do sleep 5; echo "Waiting for AVD to finish setup..."; done' || {
+            echo "ERROR: AVD setup timed out!"
             echo "avdmanager output:"
             echo "$avd_output"
             $ANDROID_HOME/cmdline-tools/latest/bin/avdmanager list avd
             ls -l "$HOME/.android/avd" || true
             ls -l "/home/runner/.config/.android/avd" || true
+            ls -l "$avd_path" || true
             exit 1
-          fi
+          }
+
+          echo "AVD created successfully at $avd_path!"
       - name: Start Emulator
         run: |
           $ANDROID_HOME/emulator/emulator -avd test -no-window -gpu swiftshader_indirect -no-audio &
