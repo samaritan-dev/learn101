@@ -9,7 +9,6 @@ on:
 env:
   ANDROID_API_LEVEL: 34
   ANDROID_BUILD_TOOLS: 34.0.0
-  ANDROID_DEVICE: pixel_6_pro
   ANDROID_ARCH: x86_64
   EMULATOR_NAME: test_avd
   GRADLE_OPTS: -Dorg.gradle.daemon=false
@@ -51,36 +50,39 @@ jobs:
             android-sdk-preview-license
             android-gradle-plugin-license
 
-      - name: Create Android Virtual Device
+      - name: Install System Image
         run: |
-          echo "Installing system image..."
-          sdkmanager "system-images;android-${{ env.ANDROID_API_LEVEL }};default;${{ env.ANDROID_ARCH }}"
-          
+          echo "Installing required system images..."
+          sdkmanager --install "system-images;android-${{ env.ANDROID_API_LEVEL }};default;${{ env.ANDROID_ARCH }}"
+          sdkmanager --install "platform-tools"
+
+      - name: Create Android Virtual Device (AVD)
+        run: |
           echo "Creating AVD..."
-          avdmanager create avd \
-            --name ${{ env.EMULATOR_NAME }} \
+          avdmanager create avd --name ${{ env.EMULATOR_NAME }} \
             --package "system-images;android-${{ env.ANDROID_API_LEVEL }};default;${{ env.ANDROID_ARCH }}" \
-            --device "${{ env.ANDROID_DEVICE }}" \
             --force
 
       - name: Start emulator
         run: |
-          $ANDROID_HOME/emulator/emulator -avd ${{ env.EMULATOR_NAME }} \
-            -no-audio \
-            -no-snapshot \
-            -no-window \
-            -gpu swiftshader_indirect \
-            -camera-back none \
-            -camera-front none &
-          
+          echo "Starting AVD..."
+          nohup $ANDROID_HOME/emulator/emulator -avd ${{ env.EMULATOR_NAME }} \
+            -no-audio -no-snapshot -no-window -gpu swiftshader_indirect \
+            -camera-back none -camera-front none > /dev/null 2>&1 &
+
+          echo "Waiting for emulator to start..."
           adb wait-for-device
-          
-          echo "Waiting for emulator to fully boot..."
-          adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
-          
-          # Unlock screen
+
+          # Check if the device is fully booted
+          boot_completed=false
+          while [ "$boot_completed" != "1" ]; do
+            sleep 5
+            boot_completed=$(adb shell getprop sys.boot_completed 2>/dev/null)
+            echo "Boot status: $boot_completed"
+          done
+
+          echo "Emulator booted! Unlocking screen and disabling animations..."
           adb shell input keyevent 82
-          # Disable animations
           adb shell settings put global window_animation_scale 0.0
           adb shell settings put global transition_animation_scale 0.0
           adb shell settings put global animator_duration_scale 0.0
