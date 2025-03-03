@@ -6,98 +6,156 @@ on:
   pull_request:
     branches: [ main ]
 
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
-  ANDROID_API_LEVEL: 34
-  ANDROID_BUILD_TOOLS: 34.0.0
-  ANDROID_DEVICE: pixel_6_pro
-  ANDROID_ARCH: x86_64
-  EMULATOR_NAME: test_avd
-  GRADLE_OPTS: -Dorg.gradle.daemon=false
+  JDK_VERSION: 17
+  DISTRIBUTION: 'zulu'
 
 jobs:
-  android-ui-tests:
-    name: Run Android UI Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 30
-
+  build:
+    name: Build
+    runs-on: ${{ vars.RUNNER }}
+    timeout-minutes: 120
     steps:
-      - name: Checkout code
+      - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Set up JDK 17
-        uses: actions/setup-java@v3
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
         with:
-          java-version: 17
-          distribution: 'temurin'
+          distribution: ${{ env.DISTRIBUTION }}
+          java-version: ${{ env.JDK_VERSION }}
+          cache: gradle
 
-      - name: Cache Gradle
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.gradle/caches
-            ~/.gradle/wrapper
-          key: ${{ runner.os }}-gradle-${{ hashFiles('**/*.gradle*', '**/gradle-wrapper.properties') }}
-          restore-keys: |
-            ${{ runner.os }}-gradle-
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
 
-      - name: Set up Android SDK
-        uses: android-actions/setup-android@v2
-        with:
-          build-tools-version: ${{ env.ANDROID_BUILD_TOOLS }}
-          licenses: |
-            android-sdk-license
-            android-sdk-preview-license
-            android-gradle-plugin-license
+      - name: Build stable debug gradle target
+        run: ./gradlew assembleStableDebug --parallel --build-cache
 
-      - name: Create Android Virtual Device
-        run: |
-          echo "Installing system image..."
-          sdkmanager "system-images;android-${{ env.ANDROID_API_LEVEL }};default;${{ env.ANDROID_ARCH }}"
-          
-          echo "Creating AVD..."
-          avdmanager create avd \
-            --name ${{ env.EMULATOR_NAME }} \
-            --package "system-images;android-${{ env.ANDROID_API_LEVEL }};default;${{ env.ANDROID_ARCH }}" \
-            --device "${{ env.ANDROID_DEVICE }}" \
-            --force
-
-      - name: Start emulator
-        run: |
-          $ANDROID_HOME/emulator/emulator -avd ${{ env.EMULATOR_NAME }} \
-            -no-audio \
-            -no-snapshot \
-            -no-window \
-            -gpu swiftshader_indirect &
-          
-          adb wait-for-device
-          
-          echo "Waiting for emulator to fully boot..."
-          adb shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
-          
-          # Unlock screen and disable animations
-          adb shell input keyevent 82
-          adb shell settings put global window_animation_scale 0.0
-          adb shell settings put global transition_animation_scale 0.0
-          adb shell settings put global animator_duration_scale 0.0
-
-      - name: Run UI tests
-        run: |
-          ./gradlew connectedDebugAndroidTest \
-            --stacktrace \
-            --no-daemon \
-            --max-workers=2 \
-            --console=plain
-
-      - name: Upload test results
-        if: always()
+      - name: Upload build outputs (APKs)
         uses: actions/upload-artifact@v4
         with:
-          name: android-ui-test-results
-          path: |
-            app/build/reports/androidTests/connected/**
-            app/build/outputs/androidTest-results/**
+          name: build-outputs
+          path: app/build/outputs
 
-      - name: Stop emulator
+      - name: Upload build reports
         if: always()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-reports
+          path: "*/build/reports"
+
+  test:
+    name: Unit Tests
+    runs-on: ${{ vars.RUNNER }}
+    timeout-minutes: 120
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.DISTRIBUTION }}
+          java-version: ${{ env.JDK_VERSION }}
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+        continue-on-error: true
+
+      - name: Run local tests
+        run: ./gradlew test --parallel --build-cache
+
+      - name: Upload test reports on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-reports
+          path: "*/build/reports/tests"
+
+  android-test:
+    name: Instrumentation Tests (${{ matrix.device.name }})
+    runs-on: ${{ vars.RUNNER }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        device:
+          - { name: pixel2Api28, img: 'system-images;android-28;google_apis;x86' }
+          - { name: pixel8Api34, img: 'system-images;android-34;aosp_atd;x86_64' }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable KVM group perms
         run: |
-          adb emu kill || true
+          echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
+          sudo udevadm control --reload-rules
+          sudo udevadm trigger --name-match=kvm
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.DISTRIBUTION }}
+          java-version: ${{ env.JDK_VERSION }}
+
+      - name: Install Emulator
+        run: |
+          yes | "$ANDROID_HOME"/cmdline-tools/latest/bin/sdkmanager --install "${{ matrix.device.img }}"
+
+
+      - name: Accept licenses
+        run: yes | "$ANDROID_HOME"/cmdline-tools/latest/bin/sdkmanager --licenses || true
+
+      - name: Run instrumentation tests
+        uses: gradle/actions/setup-gradle@v3
+        with:
+          arguments: ${{ matrix.device.name }}StableDebugAndroidTest
+
+      - name: Upload instrumentation test reports and logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: instrumentation-test-reports-${{ matrix.device.name }}
+          path: |
+            */build/reports/androidTests/**/${{ matrix.device.name }}
+            */build/outputs/androidTest-results/**/${{ matrix.device.name }}
+
+  spotless:
+    name: Spotless Check
+    runs-on: ${{ vars.RUNNER }}
+    timeout-minutes: 60
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Validate Gradle Wrapper
+        uses: gradle/actions/wrapper-validation@v3
+
+      - name: Set up JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: ${{ env.DISTRIBUTION }}
+          java-version: ${{ env.JDK_VERSION }}
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v3
+
+      - name: Spotless Check
+        run: ./gradlew spotlessCheck --init-script gradle/init.gradle.kts --parallel --build-cache
