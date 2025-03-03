@@ -59,9 +59,9 @@ jobs:
       - name: Create Android Virtual Device (AVD)
         run: |
           echo "Creating AVD..."
-          avdmanager create avd --name ${{ env.EMULATOR_NAME }} \
-            --package "system-images;android-${{ env.ANDROID_API_LEVEL }};default;${{ env.ANDROID_ARCH }}" \
-            --force
+          echo "no" | avdmanager create avd --name ${{ env.EMULATOR_NAME }} \
+          --package "system-images;android-${{ env.ANDROID_API_LEVEL }};default;${{ env.ANDROID_ARCH }}" \
+          --force
 
       - name: Start emulator
         run: |
