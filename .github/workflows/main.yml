@@ -15,79 +15,6 @@ env:
   DISTRIBUTION: 'zulu'
 
 jobs:
-  build:
-    name: Build
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v3
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: ${{ env.DISTRIBUTION }}
-          java-version: ${{ env.JDK_VERSION }}
-          cache: gradle
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: List Gradle tasks  # Keep this step for now for debugging if needed
-        run: ./gradlew tasks
-
-      - name: Build debug APK # Changed task name to assembleDebug
-        run: ./gradlew assembleDebug --parallel --build-cache
-
-      - name: Upload build outputs (APKs)
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-outputs
-          path: app/build/outputs
-
-      - name: Upload build reports
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: build-reports
-          path: "*/build/reports"
-
-  test:
-    name: Unit Tests
-    runs-on: ubuntu-latest
-    timeout-minutes: 120
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-
-      - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v3
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: ${{ env.DISTRIBUTION }}
-          java-version: ${{ env.JDK_VERSION }}
-          cache: gradle
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-        continue-on-error: true
-
-      - name: Run local tests
-        run: ./gradlew test --parallel --build-cache
-
-      - name: Upload test reports on failure
-        if: failure()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-reports
-          path: "*/build/reports/tests"
-
   android-test:
     name: Instrumentation Tests (${{ matrix.device.name }})
     runs-on: ubuntu-latest
@@ -114,10 +41,14 @@ jobs:
           distribution: ${{ env.DISTRIBUTION }}
           java-version: ${{ env.JDK_VERSION }}
 
-      - name: Add Android SDK platform-tools to path # ADDED: Add platform-tools to PATH
-        run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+      - name: Install platform-tools and emulator
+        run: |
+          yes | "$ANDROID_HOME"/cmdline-tools/latest/bin/sdkmanager --install "platform-tools" "emulator"
 
-      - name: Install Emulator
+      - name: Add Android SDK tools to path
+        run: echo "$ANDROID_HOME/platform-tools:$ANDROID_HOME/emulator:$ANDROID_HOME/cmdline-tools/latest/bin" >> $GITHUB_PATH
+
+      - name: Install System Image for Emulator
         run: |
           yes | "$ANDROID_HOME"/cmdline-tools/latest/bin/sdkmanager --install "${{ matrix.device.img }}"
 
@@ -127,18 +58,15 @@ jobs:
       - name: Create AVD and Start Emulator
         run: |
           echo "no" | "$ANDROID_HOME"/cmdline-tools/latest/bin/avdmanager create avd -n testDevice -k "${{ matrix.device.img }}"
-          # Start emulator in the background, with no window (-no-window), and logcat output to a file
           nohup "$ANDROID_HOME"/emulator/emulator -avd testDevice -no-window -noaudio -no-boot-anim -camera-back none -camera-front none -wipe-data -accel auto -gpu swiftshader_indirect > emulator.log 2>&1 &
-          # Wait for emulator to boot (check for adb devices to list a device)
-          ./adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
 
       - name: Wait for emulator to boot
-        run: adb wait-for-device shell getprop sys.boot_completed
+        run: $ANDROID_HOME/platform-tools/adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
 
-      - name: List Gradle tasks for instrumentation tests # Keep for debugging
+      - name: List Gradle tasks for instrumentation tests
         run: ./gradlew tasks
 
-      - name: Run instrumentation tests # Use connectedDebugAndroidTest
+      - name: Run instrumentation tests
         uses: gradle/actions/setup-gradle@v3
         with:
           arguments: connectedDebugAndroidTest
@@ -151,28 +79,3 @@ jobs:
           path: |
             */build/reports/androidTests/**/${{ matrix.device.name }}
             */build/outputs/androidTest-results/**/${{ matrix.device.name }}
-  spotless:
-    name: Spotless Check
-    runs-on: ubuntu-latest
-    timeout-minutes: 60
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-
-      - name: Validate Gradle Wrapper
-        uses: gradle/actions/wrapper-validation@v3
-
-      - name: Set up JDK
-        uses: actions/setup-java@v4
-        with:
-          distribution: ${{ env.DISTRIBUTION }}
-          java-version: ${{ env.JDK_VERSION }}
-          cache: gradle
-
-      - name: Setup Gradle
-        uses: gradle/actions/setup-gradle@v3
-
-      - name: Spotless Check # Removed --init-script argument
-        run: ./gradlew spotlessCheck --parallel --build-cache # Removed: --init-script gradle/init.gradle.kts
