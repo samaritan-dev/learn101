@@ -125,10 +125,10 @@ jobs:
       - name: List Gradle tasks for instrumentation tests # ADDED STEP - To find correct test task
         run: ./gradlew tasks
 
-      - name: Run instrumentation tests
+      - name: Run instrumentation tests # UPDATED TASK to connectedDebugAndroidTest
         uses: gradle/actions/setup-gradle@v3
         with:
-          arguments: ${{ matrix.device.name }}StableDebugAndroidTest
+          arguments: connectedDebugAndroidTest # Changed arguments to connectedDebugAndroidTest
 
       - name: Upload instrumentation test reports and logs on failure
         if: failure()
