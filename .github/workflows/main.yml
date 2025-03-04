@@ -57,7 +57,7 @@ jobs:
 
       - name: Create AVD and Start Emulator
         run: |
-          echo "no" | "$ANDROID_HOME"/cmdline-tools/latest/bin/avdmanager create avd -n testDevice -k "${{ matrix.device.img }}"
+          echo "yes" | "$ANDROID_HOME"/cmdline-tools/latest/bin/avdmanager create avd -n testDevice -k "${{ matrix.device.img }}"
           nohup "$ANDROID_HOME"/emulator/emulator -avd testDevice -no-window -noaudio -no-boot-anim -camera-back none -camera-front none -wipe-data -accel auto -gpu swiftshader_indirect > emulator.log 2>&1 &
 
       - name: Wait for emulator to boot
