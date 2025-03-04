@@ -114,6 +114,9 @@ jobs:
           distribution: ${{ env.DISTRIBUTION }}
           java-version: ${{ env.JDK_VERSION }}
 
+      - name: Add Android SDK platform-tools to path # ADDED: Add platform-tools to PATH
+        run: echo "$ANDROID_HOME/platform-tools" >> $GITHUB_PATH
+
       - name: Install Emulator
         run: |
           yes | "$ANDROID_HOME"/cmdline-tools/latest/bin/sdkmanager --install "${{ matrix.device.img }}"
@@ -121,7 +124,7 @@ jobs:
       - name: Accept licenses
         run: yes | "$ANDROID_HOME"/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
-      - name: Create AVD and Start Emulator # ADDED step to create and start emulator
+      - name: Create AVD and Start Emulator
         run: |
           echo "no" | "$ANDROID_HOME"/cmdline-tools/latest/bin/avdmanager create avd -n testDevice -k "${{ matrix.device.img }}"
           # Start emulator in the background, with no window (-no-window), and logcat output to a file
@@ -129,7 +132,7 @@ jobs:
           # Wait for emulator to boot (check for adb devices to list a device)
           ./adb wait-for-device shell 'while [[ -z $(getprop sys.boot_completed) ]]; do sleep 1; done; input keyevent 82'
 
-      - name: Wait for emulator to boot # Explicitly wait for boot completion
+      - name: Wait for emulator to boot
         run: adb wait-for-device shell getprop sys.boot_completed
 
       - name: List Gradle tasks for instrumentation tests # Keep for debugging
