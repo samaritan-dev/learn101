@@ -122,6 +122,9 @@ jobs:
       - name: Accept licenses
         run: yes | "$ANDROID_HOME"/cmdline-tools/latest/bin/sdkmanager --licenses || true
 
+      - name: List Gradle tasks for instrumentation tests # ADDED STEP - To find correct test task
+        run: ./gradlew tasks
+
       - name: Run instrumentation tests
         uses: gradle/actions/setup-gradle@v3
         with:
