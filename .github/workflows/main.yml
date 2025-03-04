@@ -36,11 +36,11 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: List Gradle tasks  # ADDED STEP: List available Gradle tasks
+      - name: List Gradle tasks  # Keep this step for now for debugging if needed
         run: ./gradlew tasks
 
-      - name: Build stable debug gradle target
-        run: ./gradlew assembleStableDebug --parallel --build-cache
+      - name: Build debug APK # Changed task name to assembleDebug
+        run: ./gradlew assembleDebug --parallel --build-cache
 
       - name: Upload build outputs (APKs)
         uses: actions/upload-artifact@v4
