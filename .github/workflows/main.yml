@@ -36,6 +36,9 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
+      - name: List Gradle tasks  # ADDED STEP: List available Gradle tasks
+        run: ./gradlew tasks
+
       - name: Build stable debug gradle target
         run: ./gradlew assembleStableDebug --parallel --build-cache
 
