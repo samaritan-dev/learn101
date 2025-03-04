@@ -174,5 +174,5 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v3
 
-      - name: Spotless Check
-        run: ./gradlew spotlessCheck --init-script gradle/init.gradle.kts --parallel --build-cache
+      - name: Spotless Check # Removed --init-script argument
+        run: ./gradlew spotlessCheck --parallel --build-cache # Removed: --init-script gradle/init.gradle.kts
