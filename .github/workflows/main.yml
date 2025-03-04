@@ -13,7 +13,6 @@ concurrency:
 env:
   JDK_VERSION: 17
   DISTRIBUTION: 'zulu'
-  RUNNER: ubuntu-latest
 
 jobs:
   build:
@@ -94,7 +93,6 @@ jobs:
       fail-fast: false
       matrix:
         device:
-          - { name: pixel2Api28, img: 'system-images;android-28;google_apis;x86' }
           - { name: pixel8Api34, img: 'system-images;android-34;aosp_atd;x86_64' }
 
     steps:
